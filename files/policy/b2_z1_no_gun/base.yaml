@@ -1,0 +1,75 @@
+# Copyright (c) 2024-2025 Ziqi Fan
+# SPDX-License-Identifier: Apache-2.0
+
+b2_z1_no_gun:
+  dt: 0.005
+  decimation: 4
+
+  # MuJoCo viewer: follow the floating base while preserving mouse orbit and
+  # zoom controls. Press Esc in the viewer to return to the free camera.
+  mujoco_follow_camera: true
+  mujoco_follow_camera_body: "base_link"
+  mujoco_follow_camera_distance: 4.0
+  mujoco_follow_camera_azimuth: 135.0
+  mujoco_follow_camera_elevation: -20.0
+  mujoco_follow_camera_height: 0.15
+
+  # Policy order resolved from the Isaac Lab articulation/action manager:
+  # hips (FL, FR, RL, RR), thighs (FL, FR, RL, RR), joint1,
+  # calves (FL, FR, RL, RR), joint2..joint6.
+  num_of_dofs: 18
+  wheel_indices: []
+
+  fixed_kp: [200.0, 200.0, 200.0, 200.0,
+             200.0, 200.0, 200.0, 200.0, 60.0,
+             300.0, 300.0, 300.0, 300.0, 60.0,
+             60.0, 60.0, 60.0, 60.0]
+  fixed_kd: [3.0, 3.0, 3.0, 3.0,
+             3.0, 3.0, 3.0, 3.0, 1.0,
+             3.0, 3.0, 3.0, 3.0, 1.0,
+             1.0, 1.0, 1.0, 1.0]
+
+  torque_limits: [200.0, 200.0, 200.0, 200.0,
+                  200.0, 200.0, 200.0, 200.0, 30.0,
+                  320.0, 320.0, 320.0, 320.0, 60.0,
+                  30.0, 30.0, 30.0, 30.0]
+
+  # Exact default joint pose used by the AMP stage-two training run
+  # 2026-07-28_09-31-44_ee_centerline_stage2.
+  default_dof_pos: [0.10, -0.10, 0.10, -0.10,
+                    0.80,  0.80, 1.00,  1.00, 0.00,
+                   -1.50, -1.50, -1.50, -1.50, 2.55, -1.60,
+                   -1.40,  0.00, 0.00]
+
+  # Gazebo explicit-PD feed-forward offset. This compensates the measured
+  # static sag while leaving the policy observation reference unchanged.
+  sim_dof_pos_offset: [0.00, 0.00, 0.00, 0.00,
+                      -0.00,-0.00, 0.00, 0.00, 0.00,
+                       0.00, 0.00, 0.00, 0.00, 0.00, 0.00,
+                       0.00, 0.00, 0.00]
+
+  joint_names: ["FL_hip_joint", "FR_hip_joint", "RL_hip_joint", "RR_hip_joint",
+                "FL_thigh_joint", "FR_thigh_joint", "RL_thigh_joint", "RR_thigh_joint", "joint1",
+                "FL_calf_joint", "FR_calf_joint", "RL_calf_joint", "RR_calf_joint", "joint2", "joint3",
+                "joint4", "joint5", "joint6"]
+
+  joint_controller_names: ["FL_hip_controller", "FR_hip_controller", "RL_hip_controller", "RR_hip_controller",
+                           "FL_thigh_controller", "FR_thigh_controller", "RL_thigh_controller", "RR_thigh_controller", "joint1_controller",
+                           "FL_calf_controller", "FR_calf_controller", "RL_calf_controller", "RR_calf_controller", "joint2_controller", "joint3_controller",
+                           "joint4_controller", "joint5_controller", "joint6_controller"]
+
+  # Generic simulation/controller order is identical to policy order.
+  joint_mapping: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+  urdf_to_deploy: [0, 4, 9, 1, 5, 10, 2, 6, 11, 3, 7, 12, 8, 13, 14, 15, 16, 17]
+  deploy_to_urdf: [0, 3, 6, 9, 1, 4, 7, 10, 12, 2, 5, 8, 11, 13, 14, 15, 16, 17]
+
+  # Policy index -> B2 LowState/LowCmd DDS motor index.
+  # -1 denotes a Z1 joint and must be handled through the Z1 SDK, never used
+  # directly as an array index.
+  b2_dds_mapping: [3, 0, 9, 6,
+                   4, 1, 10, 7, -1,
+                   5, 2, 11, 8, -1, -1, -1, -1, -1]
+
+  z1_policy_indices: [8, 13, 14, 15, 16, 17]
+
+# URDF order (Isaac Lab training) -> deployment order (joint_names)

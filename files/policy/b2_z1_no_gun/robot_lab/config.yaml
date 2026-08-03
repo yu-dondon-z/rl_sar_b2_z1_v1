@@ -1,0 +1,167 @@
+# Copyright (c) 2024-2025 Ziqi Fan
+# SPDX-License-Identifier: Apache-2.0
+
+b2_z1_no_gun/robot_lab:
+  model_name: "policy.pt"
+  # Exported from the centreline stage-two run, model_8300.pt.
+  # Long-horizon MuJoCo testing found model_11998 much more aggressive and
+  # unstable; model_8300 is the deployment checkpoint.
+  num_observations: 70
+  observations: ["velocity_commands", "target_commands", "base_ang_vel", "projected_gravity",
+                 "joint_pos_rel", "joint_vel_rel", "actions"]
+  observations_history: []
+  observations_history_priority: "time"
+  clip_obs: 100.0
+  # model_8300 was trained with the unfiltered JointPositionAction. Keep both
+  # the applied target and mdp.last_action on that same raw action so the
+  # learned gait does not acquire a deployment-only phase lag.
+  sync_applied_action_observation: false
+  use_raw_policy_action_observation: true
+  enable_leg_target_slew_filter: false
+  action_filter_alpha: 1.00
+
+  # Add a second output-side filter only to the final Z1 joint targets. This
+  # suppresses visible arm chatter without adding more lag to the legs.
+  enable_arm_target_filter: true
+  arm_target_filter_alpha: 0.02
+  arm_action_indices: [8, 13, 14, 15, 16, 17]
+  # Retain the previously stable Z1 action-space slew limit; the output-side
+  # filter handles residual high-frequency target motion.
+  arm_target_rate_limit: 0.45
+  # Real-robot fail-safe: switch to passive if any Z1 joint exceeds this.
+  arm_safety_velocity_limit: 2.50
+
+  # Replay a short AMP reference segment to enter the locomotion phase before
+  # handing full leg control to the policy.
+  # The starter places the policy in an AMP locomotion phase.  It is safe only
+  # with the 1 ms MuJoCo contact integration step configured in b2.xml.
+  enable_forward_gait_starter: true
+  forward_gait_starter_file: "b2_forward_gait_starter.csv"
+  # The captured cycle advances about 0.30 m/s at 40 Hz, matching the
+  # deployment command while reducing PD tracking lag at contact transitions.
+  forward_gait_starter_fps: 40.0
+  # Let policy inference observe a complete moving gait cycle before handoff.
+  gait_starter_policy_warmup: 0.12
+  # Begin physical replay from a symmetric support pose and recover the full
+  # recorded trot before policy inference starts.
+  gait_starter_replay_blend_duration: 0.50
+  # Do not reshape the AMP reference: policy state, previous action and the
+  # physical joint target must describe the same recorded gait phase.
+  gait_starter_rear_thigh_min: 1.00
+  gait_starter_rear_calf_min: -1.50
+  # RF + RL is the diagonal that chatters first at high speed. Preserve its
+  # full learned swing below 0.35 m/s, then smoothly reduce only this diagonal
+  # to 85% by 0.50 m/s.
+  rf_rl_action_scale: 0.85
+  rf_rl_action_scale_start: 0.35
+  rf_rl_action_scale_full: 0.50
+
+  # Add damping only as speed rises. RF + RL receives extra damping because
+  # MuJoCo diagnostics show substantially more actual travel on that diagonal.
+  high_speed_damping_start: 0.30
+  high_speed_damping_full: 0.50
+  high_speed_leg_kd_add: 1.0
+  high_speed_rf_rl_kd_add: 3.0
+
+  # Keep leg actions inside the physical joint envelope without clipping away
+  # the learned knee flexion. The previous +/-2.6 calf limit was repeatedly
+  # reached in normal trot and flattened the swing-foot trajectory.
+  clip_actions_lower: [-2.5, -2.5, -2.5, -2.5, -4.0,
+                       -4.0, -4.0, -4.0, -0.8, -3.6,
+                       -3.6, -3.6, -3.6, -1.5, -2.0,
+                       -2.0, -1.2, -1.0]
+  clip_actions_upper: [2.5, 2.5, 2.5, 2.5, 4.0,
+                       4.0, 4.0, 4.0, 0.8, 3.2,
+                       3.2, 3.2, 3.2, 1.5, 2.0,
+                       2.0, 1.2, 1.0]
+
+  # Match the actuator gains used by Isaac Lab during training.
+  rl_kp: [160.0, 160.0, 160.0, 160.0, 160.0,
+          160.0, 160.0, 160.0, 160.0, 160.0,
+          160.0, 160.0, 160.0, 160.0, 160.0,
+          160.0, 160.0, 160.0]
+  rl_kd: [5.0, 5.0, 5.0, 5.0, 5.0,
+          5.0, 5.0, 5.0, 5.0, 5.0,
+          5.0, 5.0, 5.0, 5.0, 5.0,
+          5.0, 5.0, 5.0]
+  fixed_kp: [200.0, 200.0, 200.0, 200.0,
+             200.0, 200.0, 200.0, 200.0, 60.0,
+             300.0, 300.0, 300.0, 300.0, 60.0,
+             60.0, 60.0, 60.0, 60.0]
+  fixed_kd: [3.0, 3.0, 3.0, 3.0,
+             3.0, 3.0, 3.0, 3.0, 1.0,
+             3.0, 3.0, 3.0, 3.0, 1.0,
+             1.0, 1.0, 1.0, 1.0]
+
+  num_of_dofs: 18
+  action_scale: [0.25, 0.25, 0.25, 0.25, 0.25,
+                 0.25, 0.25, 0.25, 0.25, 0.25,
+                 0.25, 0.25, 0.25, 0.25, 0.25,
+                 0.25, 0.25, 0.25]
+  wheel_indices: []
+
+  lin_vel_scale: 1.0
+  ang_vel_scale: 0.2
+  dof_pos_scale: 1.0
+  dof_vel_scale: 0.05
+  # base_velocity command observation order from Isaac Lab:
+  # [lin_vel_x, lin_vel_y, ang_vel_z].
+  # The policy supports the training limits x/y/yaw=[-1, 1]. Deployment keeps
+  # the existing conservative hardware clamps in rl_sim/rl_real.
+  # Training feeds generated base-velocity commands to the policy without an
+  # observation scale. Keep deployment commands 1:1 with the displayed values.
+  commands_scale: [1.0, 1.0, 1.0]
+  # Rate-limit the policy command instead of applying each 0.1 m/s keyboard
+  # step in a single inference frame. Limits are in command-units per second.
+  command_accel_limits: [0.18, 0.18, 0.30]
+  command_decel_limits: [0.30, 0.30, 0.45]
+  # MuJoCo validation shows that actor commands above 0.40 m/s overshoot to
+  # roughly 0.9--1.0 m/s and eventually tip over. Keep the keyboard command
+  # display unchanged, but cap the policy-side planar request at the highest
+  # stable deployment range until the policy is fine-tuned for this model.
+  policy_command_limits: [0.40, 0.40, 0.50]
+  # The checkpoint was explicitly rewarded as stationary at |v_xy| <= 0.1.
+  # Map any non-zero low-speed request onto its first learned walking regime;
+  # zero remains exactly zero for a stable stop.
+  minimum_policy_locomotion_speed: 0.20
+
+  # The starter CSV advances about 0.25 m/s. Seed inference with the matching
+  # command so the first learned target has the same gait phase and speed.
+  gait_starter_policy_command: [0.25, 0.00, 0.00]
+  target_commands_scale: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+  # ee_target command observation order from Isaac Lab:
+  # [pos_x, pos_y, pos_z, quat_w, quat_x, quat_y, quat_z].
+  # Couple target distance to the velocity observation exactly as the
+  # EEDerivedVelocityCommand used in training:
+  # distance = arrival_threshold * (1 + linear_speed / max_linear_speed).
+  derive_target_position_from_velocity: true
+  # Match UniformPoseWBCCommand: the desired centreline is level in the world
+  # and is transformed into the current base frame every policy step.
+  level_target_commands: true
+  target_command_arrival_threshold: 0.70
+  # The Isaac Lab Play configuration expands the command range to 1.0. A
+  # captured stable playback frame at vx~=0.30 used target_x~=0.91, which
+  # matches this inverse mapping with max_linear_speed=1.0.
+  target_command_max_linear_speed: 1.00
+  # This vector supplies z/orientation. Its x/y values are replaced at runtime.
+  # Training defines trajectory z=0.10 m in world coordinates; at the nominal
+  # Isaac Lab playback measured approximately z=-0.45 m in the policy's base
+  # frame at the nominal walking posture.
+  # Orientation is the training pitch pi/2 in quaternion wxyz order.
+  target_commands: [0.70, 0.00, -0.45,
+                    0.707107, 0.0, 0.707107, 0.0]
+
+  torque_limits: [200.0, 200.0, 200.0, 200.0,
+                  200.0, 200.0, 200.0, 200.0, 120.0,
+                  320.0, 320.0, 320.0, 320.0, 120.0,
+                  120.0, 120.0, 120.0, 120.0]
+  default_dof_pos: [0.10, -0.10, 0.10, -0.10,
+                    0.80,  0.80, 1.00,  1.00, 0.00,
+                   -1.50, -1.50, -1.50, -1.50, 2.55, -1.60,
+                   -1.40,  0.00, 0.00]
+
+  # Keep policy/controller indexing identical. Real B2 DDS routing uses
+  # b2_dds_mapping from base.yaml; Z1 uses z1_policy_indices separately.
+  joint_mapping: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+  urdf_to_deploy: [0, 4, 9, 1, 5, 10, 2, 6, 11, 3, 7, 12, 8, 13, 14, 15, 16, 17]
+  deploy_to_urdf: [0, 3, 6, 9, 1, 4, 7, 10, 12, 2, 5, 8, 11, 13, 14, 15, 16, 17]
