@@ -17,12 +17,12 @@ b2_z1_no_gun:
   # MuJoCo trajectory-following prototype. The CSV is interpreted in the
   # robot's start frame (x forward, y left, z relative to the initial base).
   # Press T after entering locomotion mode to start/stop; Space stops at once.
-  # v1.5 is the proprioceptive deployment profile. It accepts manual
-  # velocity commands and does not require a camera or RHACrackNet process.
-  trajectory_mode_enabled: false
+  # v2 supports both ordinary proprioceptive velocity control (scene_flat)
+  # and RHACrackNet visual trajectory following (scene_vision).
+  trajectory_mode_enabled: true
   # v2 deployment: the Python renderer/RHACrackNet bridge publishes validated
   # world-frame waypoints without entering the 50 Hz policy thread.
-  vision_trajectory_enabled: false
+  vision_trajectory_enabled: true
   vision_exchange_dir: "/tmp/b2_z1_mujoco_vision"
   vision_state_export_period: 0.06
   # RHACrackNet + the MuJoCo RGB-D renderer updates at roughly 2.5--3 Hz on

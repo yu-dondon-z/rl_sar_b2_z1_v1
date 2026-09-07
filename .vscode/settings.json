@@ -1,0 +1,17 @@
+{
+    "ROS2.distro": "humble",
+    "python.autoComplete.extraPaths": [
+        "/home/dong/rl_sar/install/local/lib/python3.10/dist-packages",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages",
+        "/home/dong/IsaacLab/src",
+        ""
+    ],
+    "python.analysis.extraPaths": [
+        "/home/dong/rl_sar/install/local/lib/python3.10/dist-packages",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages",
+        "/home/dong/IsaacLab/src",
+        ""
+    ]
+}
