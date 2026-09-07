@@ -14,7 +14,7 @@ from ament_index_python.packages import get_package_share_directory
 def generate_launch_description():
     rname = LaunchConfiguration("rname")
 
-    wname = "stairs"
+    world = LaunchConfiguration("world")
     robot_name = ParameterValue(Command(["echo -n ", rname]), value_type=str)
     ros_namespace = ParameterValue(Command(["echo -n ", "/", rname, "_gazebo"]), value_type=str)
     gazebo_model_name = ParameterValue(Command(["echo -n ", rname, "_gazebo"]), value_type=str)
@@ -42,8 +42,7 @@ def generate_launch_description():
         ),
         launch_arguments={
             # "verbose": "true",
-            # "pause": "true",  # Not Available
-            "world": os.path.join(get_package_share_directory("rl_sar"), "worlds", wname + ".world"),
+            "world": world,
         }.items(),
     )
 
@@ -53,7 +52,9 @@ def generate_launch_description():
         arguments=[
             "-topic", "/robot_description",
             "-entity", "robot_model",
-            "-z", "1.0",
+            "-x", "0.0",
+            "-y", "0.0",
+            "-z", "0.19",
         ],
         output="screen",
     )
@@ -94,6 +95,13 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        DeclareLaunchArgument(
+            "world",
+            description="Gazebo world file",
+            default_value=os.path.join(
+                get_package_share_directory("rl_sar"), "worlds", "earth.world"
+            ),
+        ),
         DeclareLaunchArgument(
             "rname",
             description="Robot name (e.g., a1, go2)",

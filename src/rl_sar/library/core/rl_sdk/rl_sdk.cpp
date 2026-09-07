@@ -5,6 +5,8 @@
 
 #include "rl_sdk.hpp"
 
+#include <cmath>
+
 void RL::StateController(const RobotState<float>* state, RobotCommand<float>* command)
 {
     auto updateState = [&](std::shared_ptr<FSMState> statePtr)
@@ -26,11 +28,11 @@ void RL::StateController(const RobotState<float>* state, RobotCommand<float>* co
 
     if (this->control.current_keyboard == Input::Keyboard::W)
     {
-        this->control.x += 0.1f;
+        this->control.x = std::min(this->control.x + 0.1f, 0.5f);
     }
     if (this->control.current_keyboard == Input::Keyboard::S)
     {
-        this->control.x -= 0.1f;
+        this->control.x = std::max(this->control.x - 0.1f, -0.5f);
     }
     if (this->control.current_keyboard == Input::Keyboard::A)
     {
@@ -61,6 +63,92 @@ void RL::StateController(const RobotState<float>* state, RobotCommand<float>* co
     }
 }
 
+std::vector<float> RL::ApplyMotionHeadingHold(
+    const std::vector<float>& requested_commands)
+{
+    if (requested_commands.size() < 3 || this->obs.base_quat.size() < 4 ||
+        !this->motion_heading_anchor_valid)
+    {
+        return requested_commands;
+    }
+
+    // A zero gain disables the complete fixed-world heading transform, not
+    // only the yaw-rate correction. This keeps a manual body-frame command
+    // such as W exactly [vx, 0, 0], matching the Isaac playback diagnostic.
+    const float hold_gain = this->params.Get<float>(
+        "motion_heading_hold_gain", 0.0f);
+    if (hold_gain <= 0.0f)
+    {
+        return requested_commands;
+    }
+
+    std::vector<float> corrected = requested_commands;
+    const std::vector<float> current_yaw =
+        QuaternionYawOnly(QuaternionNormalize(this->obs.base_quat));
+
+    // A deliberate yaw command establishes a new heading. Once the operator
+    // releases Q/E, straight-line hold continues from that new direction.
+    if (std::fabs(requested_commands[2]) > 0.03f)
+    {
+        this->motion_heading_quat = current_yaw;
+        return corrected;
+    }
+
+    const std::vector<float> anchor_yaw =
+        QuaternionNormalize(this->motion_heading_quat);
+    const std::vector<float> requested_in_anchor = {
+        requested_commands[0], requested_commands[1], 0.0f};
+    const std::vector<float> requested_in_world = QuatRotateInverse(
+        QuaternionConjugate(anchor_yaw), requested_in_anchor);
+    const std::vector<float> requested_in_body =
+        QuatRotateInverse(current_yaw, requested_in_world);
+    corrected[0] = requested_in_body[0];
+    corrected[1] = requested_in_body[1];
+
+    const std::vector<float> anchor_forward_in_world = QuatRotateInverse(
+        QuaternionConjugate(anchor_yaw), {1.0f, 0.0f, 0.0f});
+    const std::vector<float> anchor_forward_in_body =
+        QuatRotateInverse(current_yaw, anchor_forward_in_world);
+    const float yaw_error = std::atan2(
+        anchor_forward_in_body[1], anchor_forward_in_body[0]);
+    const float max_hold_rate = std::max(
+        0.0f,
+        this->params.Get<float>("motion_heading_hold_max_yaw_rate", 0.0f));
+    // Match EEDerivedVelocityCommand in training: the heading command fades
+    // with translational speed instead of applying full yaw feedback at every
+    // gait speed.  The previous fixed 1.2 gain saturated the yaw observation
+    // at 0.25 rad/s after a small heading error and excited the diagonal-leg
+    // oscillation seen at 0.3 m/s.
+    const float max_linear_speed = std::max(
+        this->params.Get<float>(
+            "target_command_max_linear_speed", 1.0f),
+        1.0e-6f);
+    const float speed_scale = std::clamp(
+        std::hypot(requested_commands[0], requested_commands[1]) /
+            max_linear_speed,
+        0.0f,
+        1.0f);
+    corrected[2] += std::clamp(
+        hold_gain * speed_scale * yaw_error,
+        -max_hold_rate,
+        max_hold_rate);
+    return corrected;
+}
+
+void RL::SetRuntimeTargetCommands(const std::vector<float>& commands)
+{
+    std::lock_guard<std::mutex> lock(this->runtime_target_commands_mutex);
+    this->runtime_target_commands = commands;
+    this->runtime_target_commands_valid = commands.size() >= 7;
+}
+
+void RL::ClearRuntimeTargetCommands()
+{
+    std::lock_guard<std::mutex> lock(this->runtime_target_commands_mutex);
+    this->runtime_target_commands.clear();
+    this->runtime_target_commands_valid = false;
+}
+
 std::vector<float> RL::ComputeObservation()
 {
     std::vector<std::vector<float>> obs_list;
@@ -68,7 +156,148 @@ std::vector<float> RL::ComputeObservation()
     for (const std::string &observation : this->params.Get<std::vector<std::string>>("observations"))
     {
         // ============= Base Observations =============
-        if (observation == "lin_vel")
+        if (observation == "velocity_commands")
+        {
+            obs_list.push_back(this->obs.commands * this->params.Get<std::vector<float>>("commands_scale"));
+        }
+        else if (observation == "target_commands")
+        {
+            auto target_commands =
+                this->params.Get<std::vector<float>>("target_commands");
+            bool has_runtime_target = false;
+            {
+                std::lock_guard<std::mutex> lock(
+                    this->runtime_target_commands_mutex);
+                if (this->runtime_target_commands_valid &&
+                    this->runtime_target_commands.size() >= 7)
+                {
+                    target_commands = this->runtime_target_commands;
+                    has_runtime_target = true;
+                }
+            }
+            if (this->params.Get<bool>(
+                    "derive_target_position_from_velocity", false) &&
+                !has_runtime_target &&
+                target_commands.size() >= 2 &&
+                this->obs.commands.size() >= 2)
+            {
+                const auto command_scale =
+                    this->params.Get<std::vector<float>>("commands_scale");
+                const float velocity_x =
+                    this->obs.commands[0] * command_scale[0];
+                const float velocity_y =
+                    this->obs.commands[1] * command_scale[1];
+                const float linear_speed =
+                    std::hypot(velocity_x, velocity_y);
+                const float arrival_threshold = this->params.Get<float>(
+                    "target_command_arrival_threshold", 0.7f);
+                const float max_linear_speed = std::max(
+                    this->params.Get<float>(
+                        "target_command_max_linear_speed", 1.0f),
+                    1.0e-6f);
+                const float speed_scale =
+                    std::clamp(linear_speed / max_linear_speed, 0.0f, 1.0f);
+                const float target_distance =
+                    arrival_threshold * (1.0f + speed_scale);
+
+                if (linear_speed > 1.0e-6f)
+                {
+                    target_commands[0] =
+                        velocity_x / linear_speed * target_distance;
+                    target_commands[1] =
+                        velocity_y / linear_speed * target_distance;
+                }
+                else
+                {
+                    target_commands[0] = arrival_threshold;
+                    target_commands[1] = 0.0f;
+                }
+            }
+            // UniformPoseWBCCommand used during training anchors the desired
+            // pose to a level link00/world frame, then expresses it in the
+            // current base frame.  Keeping this pose constant in the base
+            // frame hides roll/pitch errors from the policy and creates a
+            // positive-feedback tilt during Sim2Sim locomotion.
+            if (this->params.Get<bool>(
+                    "level_target_commands", false) &&
+                target_commands.size() >= 7 &&
+                this->obs.base_quat.size() >= 4)
+            {
+                const std::vector<float> base_quat =
+                    QuaternionNormalize(this->obs.base_quat);
+                // Velocity commands already include the fixed-heading
+                // correction. Use the current yaw here so this transform only
+                // compensates base roll/pitch and does not rotate x/y twice.
+                const std::vector<float> level_quat =
+                    QuaternionYawOnly(base_quat);
+                const std::vector<float> level_to_base =
+                    QuaternionMultiply(
+                        QuaternionConjugate(base_quat), level_quat);
+
+                const std::vector<float> target_position_level = {
+                    target_commands[0],
+                    target_commands[1],
+                    target_commands[2]};
+                const std::vector<float> target_position_base =
+                    QuatRotateInverse(
+                        QuaternionConjugate(level_to_base),
+                        target_position_level);
+                target_commands[0] = target_position_base[0];
+                target_commands[1] = target_position_base[1];
+                target_commands[2] = target_position_base[2];
+
+                const std::vector<float> target_quat_level = {
+                    target_commands[3],
+                    target_commands[4],
+                    target_commands[5],
+                    target_commands[6]};
+                // Training keeps the desired tool orientation on the fixed
+                // world-frame centreline established when motion starts.  Its
+                // relative quaternion must therefore expose accumulated yaw
+                // error to the actor.  Using the current base yaw here hid
+                // that error while velocity_commands requested a correction,
+                // giving the policy contradictory observations.
+                const std::vector<float> target_heading =
+                    this->motion_heading_anchor_valid
+                        ? QuaternionNormalize(this->motion_heading_quat)
+                        : level_quat;
+                const std::vector<float> target_heading_to_base =
+                    QuaternionMultiply(
+                        QuaternionConjugate(base_quat), target_heading);
+                const std::vector<float> target_quat_base =
+                    QuaternionNormalize(
+                        QuaternionMultiply(
+                            target_heading_to_base, target_quat_level));
+                target_commands[3] = target_quat_base[0];
+                target_commands[4] = target_quat_base[1];
+                target_commands[5] = target_quat_base[2];
+                target_commands[6] = target_quat_base[3];
+            }
+            obs_list.push_back(
+                target_commands *
+                this->params.Get<std::vector<float>>("target_commands_scale")
+            );
+        }
+        else if (observation == "base_ang_vel")
+        {
+            obs_list.push_back(this->obs.ang_vel * this->params.Get<float>("ang_vel_scale"));
+        }
+        else if (observation == "projected_gravity")
+        {
+            obs_list.push_back(QuatRotateInverse(this->obs.base_quat, this->obs.gravity_vec));
+        }
+        else if (observation == "joint_pos_rel")
+        {
+            obs_list.push_back(
+                (this->obs.dof_pos - this->params.Get<std::vector<float>>("default_dof_pos")) *
+                this->params.Get<float>("dof_pos_scale")
+            );
+        }
+        else if (observation == "joint_vel_rel")
+        {
+            obs_list.push_back(this->obs.dof_vel * this->params.Get<float>("dof_vel_scale"));
+        }
+        else if (observation == "lin_vel")
         {
             obs_list.push_back(this->obs.lin_vel * this->params.Get<float>("lin_vel_scale"));
         }
@@ -165,12 +394,29 @@ std::vector<float> RL::ComputeObservation()
             std::vector<float> phase_vec = {phase};
             obs_list.push_back(phase_vec);
         }
+        else if (observation != "velocity_commands" && observation != "target_commands" &&
+                 observation != "base_ang_vel" && observation != "projected_gravity" &&
+                 observation != "joint_pos_rel" && observation != "joint_vel_rel")
+        {
+            throw std::runtime_error("Unsupported observation term: " + observation);
+        }
     }
 
     this->obs_dims.clear();
     for (const auto& obs : obs_list)
     {
        this->obs_dims.push_back(obs.size());
+    }
+    const int expected_obs = this->params.Get<int>("num_observations");
+    int actual_obs = 0;
+    for (int dim : this->obs_dims)
+    {
+        actual_obs += dim;
+    }
+    if (expected_obs > 0 && actual_obs != expected_obs)
+    {
+        throw std::runtime_error("Observation dimension mismatch: expected " +
+            std::to_string(expected_obs) + ", got " + std::to_string(actual_obs));
     }
 
     std::vector<float> obs;
@@ -188,12 +434,15 @@ void RL::InitObservations()
     this->obs.ang_vel = {0.0f, 0.0f, 0.0f};
     this->obs.gravity_vec = {0.0f, 0.0f, -1.0f};
     this->obs.commands = {0.0f, 0.0f, 0.0f};
-    this->obs.base_quat = {0.0f, 0.0f, 0.0f, 1.0f};
+    this->obs.base_quat = {1.0f, 0.0f, 0.0f, 0.0f};
     this->obs.dof_pos = this->params.Get<std::vector<float>>("default_dof_pos");
     this->obs.dof_vel.clear();
     this->obs.dof_vel.resize(this->params.Get<int>("num_of_dofs"), 0.0f);
     this->obs.actions.clear();
     this->obs.actions.resize(this->params.Get<int>("num_of_dofs"), 0.0f);
+    this->obs.base_height = 0.0f;
+    this->obs.foot_contacts.assign(4, 0);
+    this->obs.undesired_ground_contact = false;
     this->ComputeObservation();
 }
 
@@ -264,9 +513,10 @@ void RL::ComputeOutput(const std::vector<float> &actions, std::vector<float> &ou
         vel_actions_scaled[i] = actions_scaled[i];
     }
     std::vector<float> all_actions_scaled = pos_actions_scaled + vel_actions_scaled;
-    output_dof_pos = pos_actions_scaled + this->params.Get<std::vector<float>>("default_dof_pos");
+    const auto default_dof_pos = this->params.Get<std::vector<float>>("default_dof_pos");
+    output_dof_pos = pos_actions_scaled + default_dof_pos;
     output_dof_vel = vel_actions_scaled;
-    output_dof_tau = this->params.Get<std::vector<float>>("rl_kp") * (all_actions_scaled + this->params.Get<std::vector<float>>("default_dof_pos") - this->obs.dof_pos) - this->params.Get<std::vector<float>>("rl_kd") * this->obs.dof_vel;
+    output_dof_tau = this->params.Get<std::vector<float>>("rl_kp") * (all_actions_scaled + default_dof_pos - this->obs.dof_pos) - this->params.Get<std::vector<float>>("rl_kd") * this->obs.dof_vel;
     output_dof_tau = clamp(output_dof_tau, -this->params.Get<std::vector<float>>("torque_limits"), this->params.Get<std::vector<float>>("torque_limits"));
 }
 
