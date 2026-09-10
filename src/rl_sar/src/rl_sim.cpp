@@ -5,6 +5,13 @@
 
 #include "rl_sim.hpp"
 
+namespace
+{
+constexpr float kB2Z1LinearSpeedLimit = 0.5f;
+constexpr float kB2Z1LateralSpeedLimit = 0.4f;
+constexpr float kB2Z1YawSpeedLimit = 0.0f;
+}
+
 RL_Sim::RL_Sim(int argc, char **argv)
 {
 #if defined(USE_ROS1)
@@ -135,6 +142,10 @@ RL_Sim::RL_Sim(int argc, char **argv)
     this->gazebo_imu_subscriber = ros2_node->create_subscription<sensor_msgs::msg::Imu>(
         "/imu", rclcpp::SystemDefaultsQoS(), [this] (const sensor_msgs::msg::Imu::SharedPtr msg) {this->GazeboImuCallback(msg);}
     );
+    this->model_state_subscriber = ros2_node->create_subscription<gazebo_msgs::msg::ModelStates>(
+        "/model_states", rclcpp::SystemDefaultsQoS(),
+        [this] (const gazebo_msgs::msg::ModelStates::SharedPtr msg) {this->ModelStatesCallback(msg);}
+    );
     this->robot_state_subscriber = ros2_node->create_subscription<robot_msgs::msg::RobotState>(
         this->ros_namespace + "robot_joint_controller/state", rclcpp::SystemDefaultsQoS(),
         [this] (const robot_msgs::msg::RobotState::SharedPtr msg) {this->RobotStateCallback(msg);}
@@ -257,6 +268,7 @@ void RL_Sim::GetState(RobotState<float> *state)
     const auto &orientation = this->pose.orientation;
     const auto &angular_velocity = this->vel.angular;
 #elif defined(USE_ROS2)
+    std::lock_guard<std::mutex> state_lock(this->robot_state_msg_mutex_);
     const auto &orientation = this->gazebo_imu.orientation;
     const auto &angular_velocity = this->gazebo_imu.angular_velocity;
 #endif
@@ -297,8 +309,22 @@ void RL_Sim::SetCommand(const RobotCommand<float> *command)
 #elif defined(USE_ROS2)
         this->robot_command_publisher_msg.motor_command[this->params.Get<std::vector<int>>("joint_mapping")[i]].q = command->motor_command.q[i];
         this->robot_command_publisher_msg.motor_command[this->params.Get<std::vector<int>>("joint_mapping")[i]].dq = command->motor_command.dq[i];
-        this->robot_command_publisher_msg.motor_command[this->params.Get<std::vector<int>>("joint_mapping")[i]].kp = command->motor_command.kp[i];
-        this->robot_command_publisher_msg.motor_command[this->params.Get<std::vector<int>>("joint_mapping")[i]].kd = command->motor_command.kd[i];
+        float sim_kp = command->motor_command.kp[i];
+        float sim_kd = command->motor_command.kd[i];
+        const bool is_b2_z1_leg =
+            this->robot_name == "b2_z1_no_gun" &&
+            !(i == 8 || i >= 13);
+        // Gazebo's explicit effort controller tracks the Isaac Lab target
+        // trajectory substantially more softly than the trained actuator.
+        // Compensate only the RL gain level (160/5); fixed GetUp gains and Z1
+        // remain unchanged, and this path is never used on the real robot.
+        if (is_b2_z1_leg && sim_kp > 0.0f && sim_kp <= 170.0f)
+        {
+            sim_kp *= 1.25f;
+            sim_kd *= 1.20f;
+        }
+        this->robot_command_publisher_msg.motor_command[this->params.Get<std::vector<int>>("joint_mapping")[i]].kp = sim_kp;
+        this->robot_command_publisher_msg.motor_command[this->params.Get<std::vector<int>>("joint_mapping")[i]].kd = sim_kd;
         this->robot_command_publisher_msg.motor_command[this->params.Get<std::vector<int>>("joint_mapping")[i]].tau = command->motor_command.tau[i];
 #endif
     }
@@ -316,6 +342,89 @@ void RL_Sim::SetCommand(const RobotCommand<float> *command)
 void RL_Sim::RobotControl()
 {
     this->GetState(&this->robot_state);
+
+    // Stop active control before a divergent physics state reaches Gazebo's
+    // renderer. Ogre aborts when a link transform produces an invalid AABB.
+    if (this->rl_init_done)
+    {
+        bool unsafe = false;
+        std::string reason;
+        for (int i = 0; i < this->params.Get<int>("num_of_dofs"); ++i)
+        {
+            const float q = this->robot_state.motor_state.q[i];
+            const float dq = this->robot_state.motor_state.dq[i];
+            const bool is_arm = (i == 8 || i >= 13);
+            // Do not drop the supporting leg torques for a short Z1 wrist
+            // transient. The arm is held separately in the no-gun FSM; only
+            // a clearly divergent arm speed should stop the whole robot.
+            const float velocity_limit = is_arm ? 25.0f : 35.0f;
+            if (!std::isfinite(q) || !std::isfinite(dq))
+            {
+                unsafe = true;
+                reason = "non-finite joint state at index " + std::to_string(i);
+                break;
+            }
+            if (std::fabs(dq) > velocity_limit)
+            {
+                unsafe = true;
+                reason = "joint velocity limit exceeded at index " +
+                    std::to_string(i) + " (dq=" + std::to_string(dq) +
+                    ", limit=" + std::to_string(velocity_limit) + ")";
+                break;
+            }
+            const bool is_hip = i < 4;
+            const bool is_thigh = i >= 4 && i <= 7;
+            const bool is_calf = i >= 9 && i <= 12;
+            const float lower =
+                is_hip ? -0.87f : (is_thigh ? -0.94f : (is_calf ? -2.82f : -3.2f));
+            const float upper =
+                is_hip ? 0.87f : (is_thigh ? 4.69f : (is_calf ? -0.43f : 3.2f));
+            if (q < lower - 0.15f || q > upper + 0.15f)
+            {
+                unsafe = true;
+                reason = "joint position limit exceeded at index " +
+                    std::to_string(i) + " (q=" + std::to_string(q) + ")";
+                break;
+            }
+        }
+
+        const auto &quat = this->robot_state.imu.quaternion;
+        const float quat_norm = std::sqrt(
+            quat[0] * quat[0] + quat[1] * quat[1] +
+            quat[2] * quat[2] + quat[3] * quat[3]);
+        if (!std::isfinite(quat_norm) || quat_norm < 0.5f)
+        {
+            unsafe = true;
+            reason = "invalid IMU quaternion";
+        }
+        else if (!unsafe)
+        {
+            const auto euler = QuaternionToEuler(quat);
+            constexpr float kMaxTiltRadians = 0.959931f; // 55 degrees
+            if (std::fabs(euler[0]) > kMaxTiltRadians ||
+                std::fabs(euler[1]) > kMaxTiltRadians)
+            {
+                unsafe = true;
+                reason = "body tilt exceeded 55 degrees";
+            }
+        }
+
+        if (unsafe)
+        {
+            static bool safety_reported = false;
+            if (!safety_reported)
+            {
+                std::cout << std::endl << LOGGER::ERROR
+                          << "Simulation safety stop: " << reason
+                          << "; switching to passive mode" << std::endl;
+                safety_reported = true;
+            }
+            this->control.x = 0.0f;
+            this->control.y = 0.0f;
+            this->control.yaw = 0.0f;
+            this->control.SetKeyboard(Input::Keyboard::P);
+        }
+    }
 
     this->StateController(&this->robot_state, &this->robot_command);
 
@@ -372,7 +481,35 @@ void RL_Sim::ModelStatesCallback(const gazebo_msgs::ModelStates::ConstPtr &msg)
 #elif defined(USE_ROS2)
 void RL_Sim::GazeboImuCallback(const sensor_msgs::msg::Imu::SharedPtr msg)
 {
+    std::lock_guard<std::mutex> state_lock(this->robot_state_msg_mutex_);
     this->gazebo_imu = *msg;
+}
+
+void RL_Sim::ModelStatesCallback(const gazebo_msgs::msg::ModelStates::SharedPtr msg)
+{
+    const auto model_it = std::find(msg->name.begin(), msg->name.end(), this->gazebo_model_name);
+    if (model_it == msg->name.end())
+    {
+        return;
+    }
+
+    const size_t index = static_cast<size_t>(std::distance(msg->name.begin(), model_it));
+    if (index >= msg->twist.size())
+    {
+        return;
+    }
+
+    const auto &twist = msg->twist[index];
+    if (!std::isfinite(twist.linear.x) ||
+        !std::isfinite(twist.linear.y) ||
+        !std::isfinite(twist.linear.z))
+    {
+        return;
+    }
+
+    std::lock_guard<std::mutex> state_lock(this->robot_state_msg_mutex_);
+    this->model_twist_world_ = twist;
+    this->received_model_state_ = true;
 }
 #endif
 
@@ -451,7 +588,41 @@ void RL_Sim::JointStatesCallback(const robot_msgs::MotorState::ConstPtr &msg, co
 #elif defined(USE_ROS2)
 void RL_Sim::RobotStateCallback(const robot_msgs::msg::RobotState::SharedPtr msg)
 {
+    if (msg->motor_state.size() != static_cast<std::size_t>(this->params.Get<int>("num_of_dofs")))
+    {
+        RCLCPP_WARN_THROTTLE(
+            this->ros2_node->get_logger(), *this->ros2_node->get_clock(), 1000,
+            "Ignoring RobotState with %zu motors; expected %d",
+            msg->motor_state.size(), this->params.Get<int>("num_of_dofs"));
+        return;
+    }
+
+    bool all_positions_zero = true;
+    for (const auto &motor : msg->motor_state)
+    {
+        if (!std::isfinite(motor.q) || !std::isfinite(motor.dq))
+        {
+            RCLCPP_WARN_THROTTLE(
+                this->ros2_node->get_logger(), *this->ros2_node->get_clock(), 1000,
+                "Ignoring RobotState containing non-finite joint feedback");
+            return;
+        }
+        if (std::fabs(motor.q) > 1e-6f)
+        {
+            all_positions_zero = false;
+        }
+    }
+
+    std::lock_guard<std::mutex> state_lock(this->robot_state_msg_mutex_);
+    if (received_valid_robot_state_ && all_positions_zero)
+    {
+        RCLCPP_WARN_THROTTLE(
+            this->ros2_node->get_logger(), *this->ros2_node->get_clock(), 1000,
+            "Ignoring all-zero RobotState reset frame");
+        return;
+    }
     this->robot_state_subscriber_msg = *msg;
+    received_valid_robot_state_ = received_valid_robot_state_ || !all_positions_zero;
 }
 #endif
 
@@ -459,19 +630,88 @@ void RL_Sim::RunModel()
 {
     if (this->rl_init_done && simulation_running)
     {
+        RobotState<float> state_snapshot;
+        state_snapshot.motor_state.resize(this->params.Get<int>("num_of_dofs"));
+        this->GetState(&state_snapshot);
+
         this->episode_length_buf += 1;
-        this->obs.ang_vel = this->robot_state.imu.gyroscope;
-        this->obs.commands = {this->control.x, this->control.y, this->control.yaw};
+        this->obs.ang_vel = state_snapshot.imu.gyroscope;
+        // Guard against NaN from IMU
+        if (!std::isfinite(state_snapshot.imu.gyroscope[0]) ||
+            !std::isfinite(state_snapshot.imu.gyroscope[1]) ||
+            !std::isfinite(state_snapshot.imu.gyroscope[2]))
+        {
+            this->obs.ang_vel = this->last_valid_gyro_;
+        }
+        else
+        {
+            this->last_valid_gyro_ = this->obs.ang_vel;
+        }
+        this->obs.base_quat = state_snapshot.imu.quaternion;
+        // Guard against NaN from IMU
+        if (!std::isfinite(state_snapshot.imu.quaternion[0]) ||
+            !std::isfinite(state_snapshot.imu.quaternion[1]) ||
+            !std::isfinite(state_snapshot.imu.quaternion[2]) ||
+            !std::isfinite(state_snapshot.imu.quaternion[3]))
+        {
+            this->obs.base_quat = this->last_valid_quat_;
+        }
+        else
+        {
+            this->last_valid_quat_ = this->obs.base_quat;
+        }
+
+        std::vector<float> target_commands = {
+            std::clamp(this->control.x, -kB2Z1LinearSpeedLimit, kB2Z1LinearSpeedLimit),
+            std::clamp(this->control.y, -kB2Z1LateralSpeedLimit, kB2Z1LateralSpeedLimit),
+            std::clamp(this->control.yaw, -kB2Z1YawSpeedLimit, kB2Z1YawSpeedLimit)};
         if (this->control.navigation_mode)
         {
-            this->obs.commands = {(float)this->cmd_vel.linear.x, (float)this->cmd_vel.linear.y, (float)this->cmd_vel.angular.z};
+            target_commands = {
+                std::clamp(static_cast<float>(this->cmd_vel.linear.x),
+                           -kB2Z1LinearSpeedLimit, kB2Z1LinearSpeedLimit),
+                std::clamp(static_cast<float>(this->cmd_vel.linear.y),
+                           -kB2Z1LateralSpeedLimit, kB2Z1LateralSpeedLimit),
+                std::clamp(static_cast<float>(this->cmd_vel.angular.z),
+                           -kB2Z1YawSpeedLimit, kB2Z1YawSpeedLimit)};
         }
-        this->obs.base_quat = this->robot_state.imu.quaternion;
-        this->obs.dof_pos = this->robot_state.motor_state.q;
-        this->obs.dof_vel = this->robot_state.motor_state.dq;
+        // Ramp commands at 1.0 units/s. The policy keeps its original joint
+        // trajectory timing while avoiding an instantaneous gait switch.
+        constexpr float kCommandStep = 0.02f; // 20 ms policy period
+        for (size_t i = 0; i < this->obs.commands.size(); ++i)
+        {
+            this->obs.commands[i] += std::clamp(
+                target_commands[i] - this->obs.commands[i],
+                -kCommandStep, kCommandStep);
+        }
+#if defined(USE_ROS2)
+        geometry_msgs::msg::Twist model_twist_world;
+        bool has_model_state = false;
+        {
+            std::lock_guard<std::mutex> state_lock(this->robot_state_msg_mutex_);
+            model_twist_world = this->model_twist_world_;
+            has_model_state = this->received_model_state_;
+        }
+        if (has_model_state)
+        {
+            const std::vector<float> linear_velocity_world = {
+                static_cast<float>(model_twist_world.linear.x),
+                static_cast<float>(model_twist_world.linear.y),
+                static_cast<float>(model_twist_world.linear.z)
+            };
+            this->obs.lin_vel =
+                QuatRotateInverse(this->obs.base_quat, linear_velocity_world);
+        }
+#endif
+        this->obs.dof_pos = state_snapshot.motor_state.q;
+        this->obs.dof_vel = state_snapshot.motor_state.dq;
 
-        this->obs.actions = this->Forward();
-        this->ComputeOutput(this->obs.actions, this->output_dof_pos, this->output_dof_vel, this->output_dof_tau);
+        const std::vector<float> policy_actions = this->Forward();
+        if (!this->params.Get<bool>("sync_applied_action_observation", false))
+        {
+            this->obs.actions = policy_actions;
+        }
+        this->ComputeOutput(policy_actions, this->output_dof_pos, this->output_dof_vel, this->output_dof_tau);
 
         if (!this->output_dof_pos.empty())
         {
@@ -512,6 +752,16 @@ std::vector<float> RL_Sim::Forward()
     }
 
     std::vector<float> clamped_obs = this->ComputeObservation();
+    for (std::size_t i = 0; i < clamped_obs.size(); ++i)
+    {
+        if (!std::isfinite(clamped_obs[i]))
+        {
+            std::cout << std::endl << LOGGER::ERROR
+                      << "Non-finite policy observation at index " << i
+                      << "; suppressing RL command" << std::endl;
+            return std::vector<float>(this->params.Get<int>("num_of_dofs"), 0.0f);
+        }
+    }
 
     std::vector<float> actions;
     if (this->params.Get<std::vector<int>>("observations_history").size() != 0)
@@ -523,6 +773,86 @@ std::vector<float> RL_Sim::Forward()
     else
     {
         actions = this->model->forward({clamped_obs});
+    }
+
+    static bool logged_first_inference = false;
+    if (!logged_first_inference)
+    {
+        const auto obs_minmax = std::minmax_element(clamped_obs.begin(), clamped_obs.end());
+        const auto action_minmax = std::minmax_element(actions.begin(), actions.end());
+        std::cout << std::endl << LOGGER::INFO
+                  << "First policy inference: obs_dim=" << clamped_obs.size()
+                  << " obs_range=[" << *obs_minmax.first << ", " << *obs_minmax.second << "]"
+                  << " action_dim=" << actions.size()
+                  << " action_range=[" << *action_minmax.first << ", " << *action_minmax.second << "]"
+                  << std::endl << LOGGER::INFO << "First policy actions:";
+        for (float action : actions)
+        {
+            std::cout << " " << action;
+        }
+        std::cout << std::endl;
+        logged_first_inference = true;
+    }
+
+    for (std::size_t i = 0; i < actions.size(); ++i)
+    {
+        if (!std::isfinite(actions[i]))
+        {
+            std::cout << std::endl << LOGGER::ERROR
+                      << "Non-finite policy action at index " << i
+                      << "; suppressing RL command" << std::endl;
+            return std::vector<float>(this->params.Get<int>("num_of_dofs"), 0.0f);
+        }
+    }
+
+    // Match FilteredJointPositionAction used during Isaac Lab training. The
+    // filtered value is returned to RunModel(), which stores it as the next
+    // `actions` observation.
+    const float action_filter_alpha =
+        this->params.Get<float>("action_filter_alpha", 1.0f);
+    if (action_filter_alpha < 1.0f &&
+        this->obs.actions.size() == actions.size())
+    {
+        const float alpha =
+            std::clamp(action_filter_alpha, 0.0f, 1.0f);
+        for (std::size_t i = 0; i < actions.size(); ++i)
+        {
+            actions[i] =
+                alpha * actions[i] +
+                (1.0f - alpha) * this->obs.actions[i];
+        }
+    }
+
+    // Constrain only Z1 target slew. The applied value is fed back as
+    // `last_action`, avoiding a hidden deployment-only filter state.
+    const float arm_target_rate_limit =
+        this->params.Get<float>("arm_target_rate_limit", 0.0f);
+    if (arm_target_rate_limit > 0.0f &&
+        this->obs.actions.size() == actions.size())
+    {
+        const float policy_period =
+            this->params.Get<float>("dt") *
+            this->params.Get<int>("decimation");
+        const auto action_scale =
+            this->params.Get<std::vector<float>>("action_scale");
+        const auto arm_indices =
+            this->params.Get<std::vector<int>>("arm_action_indices");
+        for (const int index : arm_indices)
+        {
+            if (index < 0 ||
+                static_cast<std::size_t>(index) >= actions.size() ||
+                static_cast<std::size_t>(index) >= action_scale.size())
+            {
+                continue;
+            }
+            const float scale = std::max(std::fabs(action_scale[index]), 1.0e-6f);
+            const float max_action_step =
+                arm_target_rate_limit * policy_period / scale;
+            actions[index] = std::clamp(
+                actions[index],
+                this->obs.actions[index] - max_action_step,
+                this->obs.actions[index] + max_action_step);
+        }
     }
 
     if (!this->params.Get<std::vector<float>>("clip_actions_upper").empty() && !this->params.Get<std::vector<float>>("clip_actions_lower").empty())

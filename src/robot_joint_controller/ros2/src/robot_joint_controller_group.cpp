@@ -143,6 +143,7 @@ controller_interface::InterfaceConfiguration RobotJointControllerGroup::state_in
     for (const auto & joint_name : joint_names_)
     {
         state_interfaces_config.names.push_back(joint_name + "/" + HW_IF_POSITION);
+        state_interfaces_config.names.push_back(joint_name + "/" + HW_IF_VELOCITY);
         state_interfaces_config.names.push_back(joint_name + "/" + HW_IF_EFFORT);
     }
 
@@ -155,11 +156,13 @@ CallbackReturn RobotJointControllerGroup::on_activate(const rclcpp_lifecycle::St
     last_command_.motor_command.resize(joint_names_.size());
     last_state_ = robot_msgs::msg::RobotState();
     last_state_.motor_state.resize(joint_names_.size());
+    limited_target_positions_.resize(joint_names_.size());
 
     for (int index = 0; index < joint_names_.size(); ++index)
     {
-        double init_pos = state_interfaces_[index * 2].get_value();
+        double init_pos = state_interfaces_[index * 3].get_value();
         last_command_.motor_command[index].q = init_pos;
+        limited_target_positions_[index] = init_pos;
         last_state_.motor_state[index].q = init_pos;
         last_command_.motor_command[index].dq = 0;
         last_state_.motor_state[index].dq = 0;
@@ -241,34 +244,105 @@ void RobotJointControllerGroup::UpdateFunc(const double &period_seconds)
 
     for (int index = 0; index < joint_names_.size(); ++index)
     {
+        currentPos[index] = state_interfaces_[index * 3].get_value();
+        if (!std::isfinite(currentPos[index]))
+        {
+            currentPos[index] = last_state_.motor_state[index].q;
+        }
+
+        // Use the hardware velocity interface when available. Position
+        // differencing at 1 kHz amplifies Gazebo pose quantization and feeds
+        // artificial spikes into both PD damping and policy observations.
+        double raw_velocity = state_interfaces_[index * 3 + 1].get_value();
+        if (!std::isfinite(raw_velocity) &&
+            std::isfinite(period_seconds) && period_seconds > 1e-6 &&
+            period_seconds < 0.1 && std::isfinite(last_state_.motor_state[index].q))
+        {
+            raw_velocity =
+                (currentPos[index] - last_state_.motor_state[index].q) /
+                period_seconds;
+        }
+        const double velocity_bound =
+            std::max(1.0, 2.0 * joints_urdf_[index]->limits->velocity);
+        raw_velocity = std::clamp(
+            std::isfinite(raw_velocity) ? raw_velocity : 0.0,
+            -velocity_bound, velocity_bound);
+        constexpr double kVelocityFilterAlpha = 0.25;
+        currentVel[index] =
+            (1.0 - kVelocityFilterAlpha) *
+                last_state_.motor_state[index].dq +
+            kVelocityFilterAlpha * raw_velocity;
+
         // set command data
         servo_command_.pos = last_command_.motor_command[index].q;
+        if (!std::isfinite(servo_command_.pos))
+        {
+            servo_command_.pos = last_state_.motor_state[index].q;
+        }
         PositionLimit(servo_command_.pos, index);
+        // Passive mode has kp=0, so its position field is intentionally
+        // ignored. Keep the limiter anchored to the measured joint position;
+        // otherwise the next get-up command starts from a stale target.
+        if (!std::isfinite(last_command_.motor_command[index].kp) ||
+            last_command_.motor_command[index].kp <= 0.0)
+        {
+            limited_target_positions_[index] = currentPos[index];
+        }
+        // Policy targets arrive at 50 Hz while this controller runs at 1 kHz.
+        // Apply them at the URDF velocity limit instead of in one physics step.
+        if (std::isfinite(period_seconds) && period_seconds > 0.0)
+        {
+            const double max_step = joints_urdf_[index]->limits->velocity * period_seconds;
+            servo_command_.pos = std::clamp(
+                servo_command_.pos,
+                limited_target_positions_[index] - max_step,
+                limited_target_positions_[index] + max_step);
+        }
+        limited_target_positions_[index] = servo_command_.pos;
         servo_command_.pos_stiffness = last_command_.motor_command[index].kp;
+        if (!std::isfinite(servo_command_.pos_stiffness))
+        {
+            servo_command_.pos_stiffness = 0.0;
+        }
         if (fabs(last_command_.motor_command[index].q - PosStopF) < 0.00001)
         {
             servo_command_.pos_stiffness = 0;
         }
         servo_command_.vel = last_command_.motor_command[index].dq;
+        if (!std::isfinite(servo_command_.vel))
+        {
+            servo_command_.vel = 0.0;
+        }
         VelocityLimit(servo_command_.vel, index);
         servo_command_.vel_stiffness = last_command_.motor_command[index].kd;
+        if (!std::isfinite(servo_command_.vel_stiffness))
+        {
+            servo_command_.vel_stiffness = 0.0;
+        }
         if (fabs(last_command_.motor_command[index].dq - VelStopF) < 0.00001)
         {
             servo_command_.vel_stiffness = 0;
         }
         servo_command_.torque = last_command_.motor_command[index].tau;
+        if (!std::isfinite(servo_command_.torque))
+        {
+            servo_command_.torque = 0.0;
+        }
         EffortLimit(servo_command_.torque, index);
 
-        currentPos[index] = state_interfaces_[index * 2].get_value();
-        currentVel[index] = (currentPos[index] - (double)(last_state_.motor_state[index].q)) / period_seconds;
         calcTorque[index] = servo_command_.pos_stiffness * (servo_command_.pos - currentPos[index]) + servo_command_.vel_stiffness * (servo_command_.vel - currentVel[index]) + servo_command_.torque;
+        if (!std::isfinite(calcTorque[index]))
+        {
+            calcTorque[index] = 0.0;
+        }
         EffortLimit(calcTorque[index], index);
 
         command_interfaces_[index].set_value(calcTorque[index]);
 
         last_state_.motor_state[index].q = currentPos[index];
         last_state_.motor_state[index].dq = currentVel[index];
-        last_state_.motor_state[index].tau_est = state_interfaces_[index * 2 + 1].get_value();
+        const double measured_effort = state_interfaces_[index * 3 + 2].get_value();
+        last_state_.motor_state[index].tau_est = std::isfinite(measured_effort) ? measured_effort : 0.0;
     }
 
     // publish state
@@ -287,17 +361,17 @@ void RobotJointControllerGroup::SetCommandCallback(const robot_msgs::msg::RobotC
 
 void RobotJointControllerGroup::PositionLimit(double &position, int &index)
 {
-    std::clamp(position, joints_urdf_[index]->limits->lower, joints_urdf_[index]->limits->upper);
+    position = std::clamp(position, joints_urdf_[index]->limits->lower, joints_urdf_[index]->limits->upper);
 }
 
 void RobotJointControllerGroup::VelocityLimit(double &velocity, int &index)
 {
-    std::clamp(velocity, -joints_urdf_[index]->limits->velocity, joints_urdf_[index]->limits->velocity);
+    velocity = std::clamp(velocity, -joints_urdf_[index]->limits->velocity, joints_urdf_[index]->limits->velocity);
 }
 
 void RobotJointControllerGroup::EffortLimit(double &effort, int &index)
 {
-    std::clamp(effort, -joints_urdf_[index]->limits->effort, joints_urdf_[index]->limits->effort);
+    effort = std::clamp(effort, -joints_urdf_[index]->limits->effort, joints_urdf_[index]->limits->effort);
 }
 
 } // namespace robot_joint_controller

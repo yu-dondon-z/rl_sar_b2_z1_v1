@@ -180,6 +180,11 @@ struct Observations
     std::vector<T> dof_pos;
     std::vector<T> dof_vel;
     std::vector<T> actions;
+    // Deployment-only support diagnostics. They are intentionally not part of
+    // ComputeObservation() and therefore do not change the policy input size.
+    T base_height = 0.0;
+    std::vector<int> foot_contacts;
+    bool undesired_ground_contact = false;
 };
 
 class RL
@@ -202,6 +207,11 @@ public:
     RobotState<float> start_state;
     RobotState<float> now_state;
     bool rl_init_done = false;
+    // Action terms in Isaac Lab reset their internal EMA state and
+    // mdp.last_action to zero at every episode reset, including AMP
+    // reference-state initialization. Deployment FSMs raise this flag at a
+    // fresh policy handoff so the inference backend reproduces that boundary.
+    bool reset_policy_action_state = false;
 
     // init
     void InitObservations();
@@ -229,6 +239,24 @@ public:
     // control
     Control control;
     void KeyboardInterface();
+    std::vector<float> ApplyMotionHeadingHold(
+        const std::vector<float>& requested_commands);
+    void SetRuntimeTargetCommands(const std::vector<float>& commands);
+    void ClearRuntimeTargetCommands();
+
+    // Keep straight-line commands anchored to the heading at gait start.
+    // Training generated its EE/velocity targets in a fixed world frame;
+    // without this anchor, small yaw errors accumulate during long runs.
+    bool motion_heading_anchor_valid = false;
+    std::vector<float> motion_heading_quat = {1.0f, 0.0f, 0.0f, 0.0f};
+
+    // Optional deployment-side EE target.  Trajectory followers use this to
+    // feed the policy a local target pose without changing the trained
+    // observation layout.  Access is synchronized because the MuJoCo control
+    // and policy-inference loops run in separate threads.
+    std::mutex runtime_target_commands_mutex;
+    bool runtime_target_commands_valid = false;
+    std::vector<float> runtime_target_commands;
 
     // history buffer
     ObservationBuffer history_obs_buf;

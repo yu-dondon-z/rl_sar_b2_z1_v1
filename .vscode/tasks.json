@@ -1,0 +1,86 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "构建 B2-Z1 MuJoCo 部署",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${workspaceFolder}/cmake_build",
+                "--target",
+                "rl_sim_mujoco",
+                "-j2"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "启动 RHACrackNet MuJoCo 视觉桥",
+            "type": "process",
+            "command": "/home/dong/anaconda3/envs/crack_vision/bin/python",
+            "args": [
+                "-u",
+                "${workspaceFolder}/scripts/run_mujoco_rhacracknet_bridge.py",
+                "--exchange-dir",
+                "/tmp/b2_z1_mujoco_vision",
+                "--scene",
+                "${workspaceFolder}/src/rl_sar_zoo/b2_z1_no_gun_description/mjcf/scene_vision.xml",
+                "--camera",
+                "front_depth_camera",
+                "--checkpoint",
+                "/home/dong/RHACrackNet/code/exps/rhanet_dep_CamCrack789_b2_stage1/ckpt/best_ckpt.pth",
+                "--device",
+                "cuda:0",
+                "--segmentation-mode",
+                "hybrid",
+                "--physical-crack-surface-z",
+                "0.0",
+                "--physical-crack-min-depth",
+                "0.02",
+                "--physical-crack-max-depth",
+                "0.08",
+                "--display",
+                "--save-overlay"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "MUJOCO_GL": "egl"
+                }
+            },
+            "dependsOn": "构建 B2-Z1 MuJoCo 部署",
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "rhacracknet",
+                "pattern": {
+                    "regexp": "^(?!x)(x)$",
+                    "message": 1
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": ".*",
+                    "endsPattern": "\\[Vision\\] scene="
+                }
+            }
+        },
+        {
+            "label": "停止 RHACrackNet MuJoCo 视觉桥",
+            "type": "process",
+            "command": "/usr/bin/pkill",
+            "args": [
+                "-f",
+                "${workspaceFolder}/scripts/run_mujoco_rhacracknet_bridge.py"
+            ],
+            "problemMatcher": []
+        }
+    ]
+}

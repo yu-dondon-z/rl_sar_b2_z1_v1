@@ -15,6 +15,7 @@
 #include "loop.hpp"
 #include "fsm_all.hpp"
 
+#include <algorithm>
 #include <csignal>
 #include <vector>
 #include <string>
@@ -41,6 +42,7 @@
 #include <sensor_msgs/msg/imu.hpp>
 #include <sensor_msgs/msg/joy.hpp>
 #include <geometry_msgs/msg/twist.hpp>
+#include <gazebo_msgs/msg/model_states.hpp>
 #include <std_srvs/srv/empty.hpp>
 #include <rcl_interfaces/srv/get_parameters.hpp>
 #endif
@@ -104,7 +106,12 @@ private:
     sensor_msgs::msg::Joy joy_msg;
     robot_msgs::msg::RobotCommand robot_command_publisher_msg;
     robot_msgs::msg::RobotState robot_state_subscriber_msg;
+    std::mutex robot_state_msg_mutex_;
+    geometry_msgs::msg::Twist model_twist_world_;
+    bool received_model_state_ = false;
+    bool received_valid_robot_state_ = false;
     rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr gazebo_imu_subscriber;
+    rclcpp::Subscription<gazebo_msgs::msg::ModelStates>::SharedPtr model_state_subscriber;
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_subscriber;
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_subscriber;
     rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscriber;
@@ -115,11 +122,15 @@ private:
     rclcpp::Subscription<robot_msgs::msg::RobotState>::SharedPtr robot_state_subscriber;
     rclcpp::Client<rcl_interfaces::srv::GetParameters>::SharedPtr param_client;
     void GazeboImuCallback(const sensor_msgs::msg::Imu::SharedPtr msg);
+    void ModelStatesCallback(const gazebo_msgs::msg::ModelStates::SharedPtr msg);
     void CmdvelCallback(const geometry_msgs::msg::Twist::SharedPtr msg);
     void RobotStateCallback(const robot_msgs::msg::RobotState::SharedPtr msg);
     void JoyCallback(const sensor_msgs::msg::Joy::SharedPtr msg);
 #endif
 
+    std::vector<float> last_valid_gyro_ = {0.0f, 0.0f, 0.0f};
+    // RobotState stores quaternions as [w, x, y, z].
+    std::vector<float> last_valid_quat_ = {1.0f, 0.0f, 0.0f, 0.0f};
     // others
     std::string gazebo_model_name;
     std::map<std::string, float> joint_positions;

@@ -86,6 +86,7 @@ protected:
     realtime_tools::RealtimeBuffer<robot_msgs::msg::RobotCommand> rt_command_ptr_;
     robot_msgs::msg::RobotCommand last_command_;
     robot_msgs::msg::RobotState last_state_;
+    std::vector<double> limited_target_positions_;
     ServoCommand servo_command_;
     std::vector<urdf::JointConstSharedPtr> joints_urdf_;
     rclcpp::Client<rcl_interfaces::srv::GetParameters>::SharedPtr robot_description_client_;

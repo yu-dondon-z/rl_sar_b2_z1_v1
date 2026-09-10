@@ -1,0 +1,125 @@
+# Copyright (c) 2024-2025 Ziqi Fan
+# SPDX-License-Identifier: Apache-2.0
+
+b2_z1_no_gun:
+  dt: 0.005
+  decimation: 4
+
+  # MuJoCo viewer: follow the floating base while preserving mouse orbit and
+  # zoom controls. Press Esc in the viewer to return to the free camera.
+  mujoco_follow_camera: true
+  mujoco_follow_camera_body: "base_link"
+  mujoco_follow_camera_distance: 4.0
+  mujoco_follow_camera_azimuth: 135.0
+  mujoco_follow_camera_elevation: -20.0
+  mujoco_follow_camera_height: 0.15
+
+  # MuJoCo trajectory-following prototype. The CSV is interpreted in the
+  # robot's start frame (x forward, y left, z relative to the initial base).
+  # Press T after entering locomotion mode to start/stop; Space stops at once.
+  trajectory_mode_enabled: true
+  # v2 deployment: the Python renderer/RHACrackNet bridge publishes validated
+  # world-frame waypoints without entering the 50 Hz policy thread.
+  vision_trajectory_enabled: true
+  vision_exchange_dir: "/tmp/b2_z1_mujoco_vision"
+  vision_state_export_period: 0.06
+  # RHACrackNet + the MuJoCo RGB-D renderer updates at roughly 2.5--3 Hz on
+  # this machine.  Keep stale-data protection, but tolerate one delayed frame.
+  vision_trajectory_stale_timeout: 0.80
+  vision_minimum_forward_path: 0.65
+  # Front RGB-D guides the base. Cached crack points are handed to the
+  # rear-facing Z1 only after they enter its trained rear workspace.
+  vision_rear_work_x_min: -1.00
+  vision_rear_work_x_max: -0.55
+  trajectory_file: "robot_lab/trajectories/test_gentle_s.csv"
+  trajectory_relative_to_start: true
+  trajectory_visual_point_count: 24
+  # Match the deterministic nominal-stand playback used to validate
+  # model_9400. At 0.25 m/s this checkpoint stays near its weak low-speed gait
+  # boundary; 0.30 m/s produces the verified full diagonal trot.
+  trajectory_cruise_speed: 0.30
+  # T only arms the follower. The requested forward speed rises smoothly from
+  # zero, and the policy's independent command limiter then follows it.
+  trajectory_start_speed_ramp_time: 2.50
+  trajectory_base_lookahead: 0.40
+  # Keep the trajectory target in the learned rear-workspace range instead of
+  # presenting a moving velocity with an arrived EE target.
+  trajectory_ee_lookahead: 1.00
+  trajectory_end_standoff: 1.00
+  trajectory_slowdown_distance: 1.20
+  trajectory_minimum_approach_speed: 0.04
+  trajectory_heading_gain: 1.00
+  # Correct lateral gait drift directly. Yaw-only feedback can leave B2
+  # parallel to the crack while its body translates away from the centreline.
+  # These bounds remain far inside the policy's trained lateral range.
+  vision_lateral_correction_gain: 0.80
+  vision_lateral_command_limit: 0.20
+  vision_lateral_filter_time_constant: 0.80
+  vision_lateral_command_rate_limit: 0.08
+  # Begin correcting after the initial diagonal pair is established.  The
+  # previous 8 s delay let B2 accumulate an unrecoverable parallel offset.
+  vision_steering_delay: 1.20
+  vision_steering_ramp_time: 4.00
+  trajectory_cross_track_gain: 0.80
+  trajectory_cross_track_heading_limit: 0.12
+  trajectory_cross_track_ramp_time: 3.50
+
+  # Policy order resolved from the Isaac Lab articulation/action manager:
+  # hips (FL, FR, RL, RR), thighs (FL, FR, RL, RR), joint1,
+  # calves (FL, FR, RL, RR), joint2..joint6.
+  num_of_dofs: 18
+  wheel_indices: []
+
+  fixed_kp: [200.0, 200.0, 200.0, 200.0,
+             200.0, 200.0, 200.0, 200.0, 60.0,
+             300.0, 300.0, 300.0, 300.0, 60.0,
+             60.0, 60.0, 60.0, 60.0]
+  fixed_kd: [3.0, 3.0, 3.0, 3.0,
+             3.0, 3.0, 3.0, 3.0, 1.0,
+             3.0, 3.0, 3.0, 3.0, 1.0,
+             1.0, 1.0, 1.0, 1.0]
+
+  torque_limits: [200.0, 200.0, 200.0, 200.0,
+                  200.0, 200.0, 200.0, 200.0, 30.0,
+                  320.0, 320.0, 320.0, 320.0, 60.0,
+                  30.0, 30.0, 30.0, 30.0]
+
+  # Exact default joint pose used by the AMP stage-two training run
+  # 2026-07-28_09-31-44_ee_centerline_stage2.
+  default_dof_pos: [0.10, -0.10, 0.10, -0.10,
+                    0.80,  0.80, 1.00,  1.00, 0.00,
+                   -1.50, -1.50, -1.50, -1.50, 2.55, -1.60,
+                   -1.40,  0.00, 0.00]
+
+  # Gazebo explicit-PD feed-forward offset. This compensates the measured
+  # static sag while leaving the policy observation reference unchanged.
+  sim_dof_pos_offset: [0.00, 0.00, 0.00, 0.00,
+                      -0.00,-0.00, 0.00, 0.00, 0.00,
+                       0.00, 0.00, 0.00, 0.00, 0.00, 0.00,
+                       0.00, 0.00, 0.00]
+
+  joint_names: ["FL_hip_joint", "FR_hip_joint", "RL_hip_joint", "RR_hip_joint",
+                "FL_thigh_joint", "FR_thigh_joint", "RL_thigh_joint", "RR_thigh_joint", "joint1",
+                "FL_calf_joint", "FR_calf_joint", "RL_calf_joint", "RR_calf_joint", "joint2", "joint3",
+                "joint4", "joint5", "joint6"]
+
+  joint_controller_names: ["FL_hip_controller", "FR_hip_controller", "RL_hip_controller", "RR_hip_controller",
+                           "FL_thigh_controller", "FR_thigh_controller", "RL_thigh_controller", "RR_thigh_controller", "joint1_controller",
+                           "FL_calf_controller", "FR_calf_controller", "RL_calf_controller", "RR_calf_controller", "joint2_controller", "joint3_controller",
+                           "joint4_controller", "joint5_controller", "joint6_controller"]
+
+  # Generic simulation/controller order is identical to policy order.
+  joint_mapping: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+  urdf_to_deploy: [0, 4, 9, 1, 5, 10, 2, 6, 11, 3, 7, 12, 8, 13, 14, 15, 16, 17]
+  deploy_to_urdf: [0, 3, 6, 9, 1, 4, 7, 10, 12, 2, 5, 8, 11, 13, 14, 15, 16, 17]
+
+  # Policy index -> B2 LowState/LowCmd DDS motor index.
+  # -1 denotes a Z1 joint and must be handled through the Z1 SDK, never used
+  # directly as an array index.
+  b2_dds_mapping: [3, 0, 9, 6,
+                   4, 1, 10, 7, -1,
+                   5, 2, 11, 8, -1, -1, -1, -1, -1]
+
+  z1_policy_indices: [8, 13, 14, 15, 16, 17]
+
+# URDF order (Isaac Lab training) -> deployment order (joint_names)

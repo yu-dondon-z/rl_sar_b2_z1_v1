@@ -290,6 +290,12 @@ endif()
 if(SYSTEM_TYPE STREQUAL "Linux")
 set(BUILD_EXAMPLES OFF CACHE BOOL "Disable examples build for unitree_sdk2" FORCE)
 add_subdirectory(library/thirdparty/robot_sdk/unitree/unitree_sdk2)
+
+add_library(z1_sdk SHARED IMPORTED)
+set_target_properties(z1_sdk PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/library/thirdparty/z1_sdk/include"
+    IMPORTED_LOCATION "${CMAKE_CURRENT_SOURCE_DIR}/library/thirdparty/z1_sdk/lib/libZ1_SDK_${ARCH_DIR}.so"
+)
 endif()
 
 # l4w4_sdk
@@ -515,6 +521,30 @@ if(SYSTEM_TYPE STREQUAL "Linux")
             )
             install(TARGETS rl_real_go2 DESTINATION lib/${PROJECT_NAME})
         endif()
+    endif()
+endif()
+
+# executable for B2 + Z1 no-gun real deployment
+if(SYSTEM_TYPE STREQUAL "Linux")
+    add_executable(rl_real_b2_z1_no_gun src/rl_real_b2_z1_no_gun.cpp)
+    target_link_libraries(rl_real_b2_z1_no_gun
+        unitree_sdk2
+        z1_sdk
+        rl_sdk
+        observation_buffer
+        ${YAML_CPP_LIBRARIES}
+        Threads::Threads
+    )
+    set_target_properties(rl_real_b2_z1_no_gun PROPERTIES
+        BUILD_RPATH "${CMAKE_CURRENT_SOURCE_DIR}/library/thirdparty/z1_sdk/lib"
+        INSTALL_RPATH "\$ORIGIN/..;${CMAKE_INSTALL_RPATH};${CMAKE_CURRENT_SOURCE_DIR}/library/thirdparty/z1_sdk/lib;${CMAKE_CURRENT_SOURCE_DIR}/library/thirdparty/robot_sdk/unitree/unitree_sdk2/thirdparty/lib/${ARCH_DIR}"
+    )
+    if(NOT USE_CMAKE AND $ENV{ROS_DISTRO} MATCHES "foxy|humble")
+        install(TARGETS rl_real_b2_z1_no_gun DESTINATION lib/${PROJECT_NAME})
+        install(FILES
+            "${CMAKE_CURRENT_SOURCE_DIR}/library/thirdparty/z1_sdk/lib/libZ1_SDK_${ARCH_DIR}.so"
+            DESTINATION lib/
+        )
     endif()
 endif()
 

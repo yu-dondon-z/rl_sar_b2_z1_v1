@@ -1,5 +1,5 @@
 <launch>
-    <arg name="wname" default="stairs"/>
+    <arg name="wname" default="earth"/>
     <arg name="rname" default=""/>
     <param name="robot_name" type="str" value="$(arg rname)"/>
     <param name="ros_namespace" type="str" value="/$(arg rname)_gazebo/"/>
