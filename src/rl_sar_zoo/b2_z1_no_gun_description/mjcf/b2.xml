@@ -79,10 +79,11 @@
       <geom size="0.0125 0.06 0.07" pos="-0.405 0 0.005" type="box" rgba="0 0 0 1" class="collision"/>
       <geom pos="0.84158 -0.0134347 -0.0134347" quat="-3.89602e-06 1.29867e-06 0.707107 -0.707107" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0 0 0 1" mesh="f_oc_link"/>
       <geom pos="-0.00451008 0.0252504 -0.0262476" quat="0.707107 -0.707107 -1.29867e-06 -1.29867e-06" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0 0 0 1" mesh="r_oc_link"/>
-      <!-- B2 built-in front RGB-D optical unit. MuJoCo cameras look along
-           local -Z; this pose corresponds to the ROS optical frame looking
-           45 degrees forward/down. It is used only by the external visual
-           trajectory bridge and does not add dynamics or collision. -->
+      <!-- B2 built-in front RGB-D optical unit at its fixed factory-model
+           mounting pose. MuJoCo cameras look along local -Z; this corresponds
+           to the ROS optical frame looking 45 degrees forward/down. It is the
+           only camera used by the external visual trajectory bridge and does
+           not add dynamics or collision. -->
       <camera name="front_depth_camera"
               pos="0.41251 0.024997 0.04765"
               quat="0.65328103 0.27059575 -0.27059675 -0.65328343"

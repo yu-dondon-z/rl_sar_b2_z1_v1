@@ -13,6 +13,7 @@
 #include <unitree/robot/channel/channel_subscriber.hpp>
 #include <unitree/idl/go2/LowState_.hpp>
 #include <unitree/idl/go2/LowCmd_.hpp>
+#include <unitree/idl/go2/SportModeState_.hpp>
 #include <unitree/idl/go2/WirelessController_.hpp>
 #include <unitree/robot/b2/motion_switcher/motion_switcher_client.hpp>
 #include <unitree_arm_sdk/control/unitreeArm.h>
@@ -24,12 +25,18 @@
 #include <cstring>
 #include <cstdint>
 #include <csignal>
+#include <deque>
+#include <filesystem>
+#include <fstream>
+#include <iomanip>
 #include <limits>
 #include <mutex>
 #include <net/if.h>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <yaml-cpp/yaml.h>
 
 using namespace unitree::common;
 using namespace unitree::robot;
@@ -39,6 +46,7 @@ namespace
 {
 constexpr char kLowCmdTopic[] = "rt/lowcmd";
 constexpr char kLowStateTopic[] = "rt/lowstate";
+constexpr char kSportModeStateTopic[] = "rt/sportmodestate";
 constexpr char kJoystickTopic[] = "rt/wirelesscontroller";
 constexpr double kPosStop = 2.146E+9;
 constexpr double kVelStop = 16000.0;
@@ -49,6 +57,70 @@ constexpr float kJoystickDeadzone = 0.05f;
 constexpr bool kUseB2TargetVelocityFeedforward = false;
 constexpr float kB2LegTargetVelocityLimit = 1.0f;
 constexpr float kB2LegTargetVelocityAlpha = 0.15f;
+
+struct RealVisionPoint
+{
+    double x = 0.0;
+    double y = 0.0;
+    double z = 0.0;
+    double s = 0.0;
+};
+
+struct TimedBasePose
+{
+    std::uint64_t monotonic_ns = 0;
+    std::array<double, 3> position{{0.0, 0.0, 0.0}};
+    std::array<double, 4> quaternion{{1.0, 0.0, 0.0, 0.0}};
+};
+
+std::uint64_t SteadyNowNs()
+{
+    return static_cast<std::uint64_t>(
+        std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::steady_clock::now().time_since_epoch()).count());
+}
+
+bool NormalizeQuaternion(std::array<double, 4> *quaternion)
+{
+    double norm_squared = 0.0;
+    for (const double value : *quaternion)
+    {
+        if (!std::isfinite(value)) return false;
+        norm_squared += value * value;
+    }
+    if (norm_squared < 1.0e-12) return false;
+    const double inverse_norm = 1.0 / std::sqrt(norm_squared);
+    for (double &value : *quaternion) value *= inverse_norm;
+    return true;
+}
+
+std::array<double, 3> RotateByQuaternion(
+    const std::array<double, 4> &q, const std::array<double, 3> &point)
+{
+    const double w = q[0], x = q[1], y = q[2], z = q[3];
+    return {{
+        (1.0 - 2.0 * (y * y + z * z)) * point[0] +
+            2.0 * (x * y - z * w) * point[1] +
+            2.0 * (x * z + y * w) * point[2],
+        2.0 * (x * y + z * w) * point[0] +
+            (1.0 - 2.0 * (x * x + z * z)) * point[1] +
+            2.0 * (y * z - x * w) * point[2],
+        2.0 * (x * z - y * w) * point[0] +
+            2.0 * (y * z + x * w) * point[1] +
+            (1.0 - 2.0 * (x * x + y * y)) * point[2]
+    }};
+}
+
+std::array<double, 3> RotateByQuaternionInverse(
+    const std::array<double, 4> &q, const std::array<double, 3> &point)
+{
+    return RotateByQuaternion({{q[0], -q[1], -q[2], -q[3]}}, point);
+}
+
+double WrapAngle(double angle)
+{
+    return std::atan2(std::sin(angle), std::cos(angle));
+}
 
 std::atomic<bool> g_shutdown_requested{false};
 
@@ -116,7 +188,8 @@ public:
                           const std::string &z1_ip, uint32_t z1_to_port,
                           uint32_t z1_own_port, bool z1_skip_lowcmd,
                           bool preflight_only, bool disable_z1, float b2_kp_scale,
-                          float b2_kd_scale)
+                          float b2_kd_scale, bool enable_real_vision,
+                          const std::string &vision_exchange_dir)
     {
         this->ang_vel_axis = "body";
         this->robot_name = "b2_z1_no_gun";
@@ -157,10 +230,33 @@ public:
             new ChannelSubscriber<unitree_go::msg::dds_::LowState_>(kLowStateTopic));
         lowstate_subscriber_->InitChannel(
             std::bind(&RLRealB2Z1NoGun::LowStateHandler, this, std::placeholders::_1), 1);
+        sport_state_subscriber_.reset(
+            new ChannelSubscriber<unitree_go::msg::dds_::SportModeState_>(
+                kSportModeStateTopic));
+        sport_state_subscriber_->InitChannel(
+            std::bind(&RLRealB2Z1NoGun::SportStateHandler, this,
+                      std::placeholders::_1), 1);
         joystick_subscriber_.reset(
             new ChannelSubscriber<unitree_go::msg::dds_::WirelessController_>(kJoystickTopic));
         joystick_subscriber_->InitChannel(
             std::bind(&RLRealB2Z1NoGun::JoystickHandler, this, std::placeholders::_1), 1);
+
+        real_vision_enabled_ = enable_real_vision;
+        real_vision_exchange_dir_ = vision_exchange_dir;
+        if (real_vision_enabled_)
+        {
+            std::error_code error;
+            std::filesystem::create_directories(real_vision_exchange_dir_, error);
+            if (error)
+            {
+                throw std::runtime_error(
+                    "Cannot create real-vision exchange directory: " +
+                    real_vision_exchange_dir_ + ": " + error.message());
+            }
+            std::cout << LOGGER::INFO
+                      << "Real RGB-D trajectory input enabled: "
+                      << real_vision_exchange_dir_ << std::endl;
+        }
 
         if (enable_motion_switcher)
         {
@@ -211,6 +307,25 @@ public:
                   << (z1_enabled_ ? "Initial B2 and Z1 states received"
                                   : "Initial B2 state received")
                   << std::endl;
+        if (real_vision_enabled_)
+        {
+            const auto odometry_deadline =
+                std::chrono::steady_clock::now() + std::chrono::seconds(3);
+            TimedBasePose pose;
+            while (!GetLatestBasePose(&pose) &&
+                   std::chrono::steady_clock::now() < odometry_deadline)
+                std::this_thread::sleep_for(std::chrono::milliseconds(20));
+            if (!GetLatestBasePose(&pose))
+            {
+                throw std::runtime_error(
+                    "Real vision requires fresh rt/sportmodestate odometry; "
+                    "the topic was not received within 3 seconds");
+            }
+            std::cout << LOGGER::INFO
+                      << "B2 visual odometry ready: position=["
+                      << pose.position[0] << ", " << pose.position[1]
+                      << ", " << pose.position[2] << "]" << std::endl;
+        }
         RobotState<float> initial_state;
         initial_state.motor_state.resize(
             this->params.Get<int>("num_of_dofs"));
@@ -778,6 +893,441 @@ private:
         return true;
     }
 
+    bool GetLatestBasePose(TimedBasePose *pose) const
+    {
+        std::lock_guard<std::mutex> lock(sport_state_mutex_);
+        if (base_pose_history_.empty()) return false;
+        *pose = base_pose_history_.back();
+        const std::uint64_t now = SteadyNowNs();
+        const std::uint64_t maximum_age_ns = static_cast<std::uint64_t>(
+            1.0e9 * this->params.Get<double>(
+                "real_vision_odometry_stale_timeout", 0.25));
+        return now >= pose->monotonic_ns &&
+               now - pose->monotonic_ns <= maximum_age_ns;
+    }
+
+    bool GetBasePoseAt(std::uint64_t timestamp_ns, TimedBasePose *pose) const
+    {
+        std::lock_guard<std::mutex> lock(sport_state_mutex_);
+        if (base_pose_history_.empty()) return false;
+        auto closest = base_pose_history_.begin();
+        std::uint64_t closest_error = std::numeric_limits<std::uint64_t>::max();
+        for (auto iterator = base_pose_history_.begin();
+             iterator != base_pose_history_.end(); ++iterator)
+        {
+            const std::uint64_t error = iterator->monotonic_ns > timestamp_ns
+                ? iterator->monotonic_ns - timestamp_ns
+                : timestamp_ns - iterator->monotonic_ns;
+            if (error < closest_error)
+            {
+                closest = iterator;
+                closest_error = error;
+            }
+        }
+        const std::uint64_t maximum_error_ns = static_cast<std::uint64_t>(
+            1.0e9 * this->params.Get<double>(
+                "real_vision_maximum_sync_error", 0.15));
+        if (closest_error > maximum_error_ns) return false;
+        *pose = *closest;
+        return true;
+    }
+
+    static RealVisionPoint BaseToOdom(
+        const TimedBasePose &pose, const RealVisionPoint &point)
+    {
+        const auto rotated = RotateByQuaternion(
+            pose.quaternion, {{point.x, point.y, point.z}});
+        return {pose.position[0] + rotated[0],
+                pose.position[1] + rotated[1],
+                pose.position[2] + rotated[2], point.s};
+    }
+
+    static RealVisionPoint OdomToBase(
+        const TimedBasePose &pose, const RealVisionPoint &point)
+    {
+        const auto rotated = RotateByQuaternionInverse(
+            pose.quaternion,
+            {{point.x - pose.position[0], point.y - pose.position[1],
+              point.z - pose.position[2]}});
+        return {rotated[0], rotated[1], rotated[2], point.s};
+    }
+
+    static void RecomputeArcLength(std::vector<RealVisionPoint> *points)
+    {
+        if (points->empty()) return;
+        (*points)[0].s = 0.0;
+        for (std::size_t index = 1; index < points->size(); ++index)
+        {
+            const auto &previous = (*points)[index - 1];
+            auto &point = (*points)[index];
+            point.s = previous.s + std::hypot(
+                point.x - previous.x, point.y - previous.y);
+        }
+    }
+
+    void IngestRealVisionTrajectory()
+    {
+        if (!real_vision_enabled_) return;
+        const std::filesystem::path path =
+            std::filesystem::path(real_vision_exchange_dir_) /
+            "latest_trajectory.json";
+        std::error_code error;
+        const auto modified = std::filesystem::last_write_time(path, error);
+        if (!error && (!real_vision_mtime_valid_ ||
+                       modified != real_vision_mtime_))
+        {
+            try
+            {
+                const YAML::Node root = YAML::LoadFile(path.string());
+                if (root["frame_id"].as<std::string>("") != "b2_base")
+                {
+                    throw std::runtime_error(
+                        "trajectory frame_id must be b2_base");
+                }
+                const std::uint64_t capture_ns =
+                    root["capture_monotonic_ns"].as<std::uint64_t>(0);
+                if (capture_ns == 0)
+                {
+                    throw std::runtime_error(
+                        "trajectory has no capture_monotonic_ns");
+                }
+                TimedBasePose capture_pose;
+                if (!GetBasePoseAt(capture_ns, &capture_pose))
+                {
+                    throw std::runtime_error(
+                        "no synchronized B2 odometry pose for camera frame");
+                }
+                const YAML::Node waypoints =
+                    root["control_waypoints_robot_xyz"];
+                if (!waypoints || !waypoints.IsSequence())
+                {
+                    throw std::runtime_error("trajectory contains no waypoints");
+                }
+                std::vector<RealVisionPoint> points_base;
+                for (const auto &node : waypoints)
+                {
+                    if (!node.IsSequence() || node.size() < 3) continue;
+                    RealVisionPoint point{node[0].as<double>(),
+                                          node[1].as<double>(),
+                                          node[2].as<double>(), 0.0};
+                    if (std::isfinite(point.x) && std::isfinite(point.y) &&
+                        std::isfinite(point.z) && point.x > -0.20 &&
+                        point.x < 8.0 && std::fabs(point.y) < 3.0)
+                    {
+                        points_base.push_back(point);
+                    }
+                }
+                if (points_base.size() < 3)
+                    throw std::runtime_error("fewer than three valid waypoints");
+                if (points_base.front().x > points_base.back().x)
+                    std::reverse(points_base.begin(), points_base.end());
+
+                std::vector<RealVisionPoint> points_odom;
+                points_odom.reserve(points_base.size());
+                for (const auto &point : points_base)
+                    points_odom.push_back(BaseToOdom(capture_pose, point));
+                RecomputeArcLength(&points_odom);
+                if (points_odom.back().s < this->params.Get<double>(
+                        "real_vision_minimum_path_length", 0.30))
+                {
+                    throw std::runtime_error("metric trajectory is too short");
+                }
+
+                live_trajectory_odom_ = points_odom;
+                // Preserve already traversed crack points for the rear-mounted
+                // tool. Join the refreshed front-camera path at its nearest
+                // previously cached point instead of replacing history.
+                if (trajectory_history_odom_.empty())
+                {
+                    trajectory_history_odom_ = points_odom;
+                }
+                else
+                {
+                    std::size_t join_index = 0;
+                    double join_distance = std::numeric_limits<double>::infinity();
+                    for (std::size_t index = 0;
+                         index < trajectory_history_odom_.size(); ++index)
+                    {
+                        const double distance = std::hypot(
+                            trajectory_history_odom_[index].x - points_odom.front().x,
+                            trajectory_history_odom_[index].y - points_odom.front().y);
+                        if (distance < join_distance)
+                        {
+                            join_distance = distance;
+                            join_index = index;
+                        }
+                    }
+                    if (join_distance > 0.60)
+                    {
+                        trajectory_history_odom_ = points_odom;
+                    }
+                    else
+                    {
+                        trajectory_history_odom_.resize(join_index + 1);
+                        for (const auto &point : points_odom)
+                        {
+                            const auto &last = trajectory_history_odom_.back();
+                            if (std::hypot(point.x - last.x,
+                                           point.y - last.y) >= 0.025)
+                                trajectory_history_odom_.push_back(point);
+                        }
+                    }
+                }
+                RecomputeArcLength(&trajectory_history_odom_);
+                real_vision_last_received_ = std::chrono::steady_clock::now();
+                real_vision_fresh_ = true;
+                real_vision_mtime_ = modified;
+                real_vision_mtime_valid_ = true;
+            }
+            catch (const std::exception &exception)
+            {
+                if (SteadyNowNs() - real_vision_last_parse_warning_ns_ >
+                    1000000000ULL)
+                {
+                    std::cout << LOGGER::WARNING
+                              << "[RealVision] rejected frame: "
+                              << exception.what() << std::endl;
+                    real_vision_last_parse_warning_ns_ = SteadyNowNs();
+                }
+            }
+        }
+        if (real_vision_fresh_)
+        {
+            const double age = std::chrono::duration<double>(
+                std::chrono::steady_clock::now() -
+                real_vision_last_received_).count();
+            if (age > this->params.Get<double>(
+                    "real_vision_trajectory_stale_timeout", 1.0))
+                real_vision_fresh_ = false;
+        }
+    }
+
+    RealVisionPoint SampleRealTrajectory(
+        const std::vector<RealVisionPoint> &points, double arc_length) const
+    {
+        if (points.empty()) return {};
+        arc_length = std::clamp(arc_length, 0.0, points.back().s);
+        const auto upper = std::lower_bound(
+            points.begin(), points.end(), arc_length,
+            [](const RealVisionPoint &point, double value)
+            { return point.s < value; });
+        if (upper == points.begin()) return *upper;
+        if (upper == points.end()) return points.back();
+        const auto &end = *upper;
+        const auto &start = *(upper - 1);
+        const double denominator = std::max(end.s - start.s, 1.0e-9);
+        const double blend = (arc_length - start.s) / denominator;
+        return {start.x + blend * (end.x - start.x),
+                start.y + blend * (end.y - start.y),
+                start.z + blend * (end.z - start.z), arc_length};
+    }
+
+    void StopRealVision(const std::string &reason)
+    {
+        if (!real_vision_active_) return;
+        real_vision_active_ = false;
+        this->control.x = 0.0f;
+        this->control.y = 0.0f;
+        this->control.yaw = 0.0f;
+        this->ClearRuntimeTargetCommands();
+        std::cout << LOGGER::INFO << "[RealVision] stopped: " << reason
+                  << std::endl;
+    }
+
+    void ToggleRealVision()
+    {
+        if (!real_vision_enabled_) return;
+        if (real_vision_active_)
+        {
+            StopRealVision("operator toggle");
+            return;
+        }
+        TimedBasePose pose;
+        if (!this->rl_init_done)
+        {
+            std::cout << LOGGER::WARNING
+                      << "[RealVision] enter policy mode with 1 before T"
+                      << std::endl;
+            return;
+        }
+        if (!GetLatestBasePose(&pose))
+        {
+            std::cout << LOGGER::WARNING
+                      << "[RealVision] no fresh rt/sportmodestate odometry; "
+                      << "trajectory mode remains disabled" << std::endl;
+            return;
+        }
+        if (!real_vision_fresh_ || live_trajectory_odom_.size() < 3)
+        {
+            std::cout << LOGGER::WARNING
+                      << "[RealVision] no fresh synchronized RGB-D trajectory"
+                      << std::endl;
+            return;
+        }
+        real_vision_active_ = true;
+        real_vision_start_time_ = std::chrono::steady_clock::now();
+        real_target_initialized_ = false;
+        std::cout << LOGGER::INFO
+                  << "[RealVision] odometry-compensated crack following started"
+                  << std::endl;
+    }
+
+    void UpdateRealVisionControl()
+    {
+        if (!real_vision_active_) return;
+        TimedBasePose pose;
+        if (!GetLatestBasePose(&pose))
+        {
+            StopRealVision("B2 odometry became stale");
+            return;
+        }
+        if (!real_vision_fresh_)
+        {
+            const float retain = std::max(
+                0.0f, real_vision_stale_command_retain_ - 0.005f /
+                    std::max(0.5f, this->params.Get<float>(
+                        "vision_loss_stop_duration", 2.5f)));
+            real_vision_stale_command_retain_ = retain;
+            this->control.x *= retain;
+            this->control.y = 0.0f;
+            this->control.yaw *= retain;
+            if (retain <= 0.0f) StopRealVision("vision trajectory became stale");
+            return;
+        }
+        real_vision_stale_command_retain_ = 1.0f;
+
+        std::size_t nearest = 0;
+        double nearest_distance = std::numeric_limits<double>::infinity();
+        for (std::size_t index = 0; index < live_trajectory_odom_.size(); ++index)
+        {
+            const double distance = std::hypot(
+                live_trajectory_odom_[index].x - pose.position[0],
+                live_trajectory_odom_[index].y - pose.position[1]);
+            if (distance < nearest_distance)
+            {
+                nearest_distance = distance;
+                nearest = index;
+            }
+        }
+        const double nearest_s = live_trajectory_odom_[nearest].s;
+        const double lookahead = this->params.Get<double>(
+            "trajectory_base_lookahead", 1.0);
+        const double chord = this->params.Get<double>(
+            "vision_heading_chord_length", 1.0);
+        const auto aim = SampleRealTrajectory(
+            live_trajectory_odom_, nearest_s + lookahead);
+        const auto tangent_start = SampleRealTrajectory(
+            live_trajectory_odom_, nearest_s + lookahead - 0.5 * chord);
+        const auto tangent_end = SampleRealTrajectory(
+            live_trajectory_odom_, nearest_s + lookahead + 0.5 * chord);
+        const auto aim_base = OdomToBase(pose, aim);
+        const auto tangent_start_base = OdomToBase(pose, tangent_start);
+        const auto tangent_end_base = OdomToBase(pose, tangent_end);
+        const double tangent_heading = std::atan2(
+            tangent_end_base.y - tangent_start_base.y,
+            tangent_end_base.x - tangent_start_base.x);
+        const double cross_track_heading = std::atan2(
+            this->params.Get<double>("trajectory_cross_track_gain", 0.8) *
+                aim_base.y,
+            std::max(aim_base.x, 0.10));
+        const double heading_error = WrapAngle(
+            tangent_heading + std::clamp(
+                cross_track_heading,
+                -this->params.Get<double>(
+                    "trajectory_cross_track_heading_limit", 0.12),
+                this->params.Get<double>(
+                    "trajectory_cross_track_heading_limit", 0.12)));
+        const double yaw_limit = this->params.Get<double>(
+            "real_vision_yaw_command_limit", 0.15);
+        const double requested_yaw = std::clamp(
+            this->params.Get<double>("trajectory_heading_gain", 1.0) *
+                heading_error, -yaw_limit, yaw_limit);
+        const double elapsed = std::chrono::duration<double>(
+            std::chrono::steady_clock::now() - real_vision_start_time_).count();
+        const double ramp_duration = std::max(
+            0.5, this->params.Get<double>(
+                "trajectory_start_speed_ramp_time", 2.5));
+        double ramp = std::clamp(elapsed / ramp_duration, 0.0, 1.0);
+        ramp = ramp * ramp * (3.0 - 2.0 * ramp);
+        this->control.x = static_cast<float>(ramp * this->params.Get<double>(
+            "trajectory_cruise_speed", 0.30));
+        this->control.y = 0.0f;
+        this->control.yaw = static_cast<float>(ramp * requested_yaw);
+
+        // Re-express an already observed crack point in the current base
+        // frame. This is the key front-camera-to-rear-tool handoff: the point
+        // stays fixed in odom while B2 walks past it.
+        RealVisionPoint best_target_odom;
+        bool target_found = false;
+        double best_target_error = std::numeric_limits<double>::infinity();
+        const double nominal_x = -0.775;
+        for (const auto &point_odom : trajectory_history_odom_)
+        {
+            auto point_base = OdomToBase(pose, point_odom);
+            if (point_base.x < -1.00 || point_base.x > -0.55 ||
+                std::fabs(point_base.y) > 0.40) continue;
+            const double error = std::fabs(point_base.x - nominal_x);
+            if (error < best_target_error)
+            {
+                best_target_error = error;
+                best_target_odom = point_odom;
+                target_found = true;
+            }
+        }
+        if (target_found)
+        {
+            // Tool height is a world/odom vertical offset. Applying it after
+            // conversion to base_link would tilt the offset with the body and
+            // recreate the TCP-height error on pitched terrain.
+            best_target_odom.z += this->params.Get<double>(
+                "vision_tool_height_above_ground", 0.09);
+            const auto tool_target_base = OdomToBase(pose, best_target_odom);
+            const auto x_range = this->params.Get<std::vector<float>>(
+                "vision_policy_target_x_range", {-1.0f, -0.55f});
+            const auto z_range = this->params.Get<std::vector<float>>(
+                "vision_policy_target_z_range", {-0.38f, -0.30f});
+            std::array<double, 3> desired{{
+                std::clamp(tool_target_base.x,
+                           static_cast<double>(x_range[0]),
+                           static_cast<double>(x_range[1])),
+                std::clamp(tool_target_base.y,
+                           -this->params.Get<double>(
+                               "vision_policy_target_y_limit", 0.15),
+                           this->params.Get<double>(
+                               "vision_policy_target_y_limit", 0.15)),
+                std::clamp(tool_target_base.z,
+                           static_cast<double>(z_range[0]),
+                           static_cast<double>(z_range[1]))}};
+            if (!real_target_initialized_)
+            {
+                const auto nominal = this->params.Get<std::vector<float>>(
+                    "target_commands");
+                real_target_b_ = {{nominal[0], nominal[1], nominal[2]}};
+                real_target_initialized_ = true;
+            }
+            const double alpha = std::clamp(
+                0.005 / std::max(0.05, this->params.Get<double>(
+                    "vision_policy_target_filter_time_constant", 0.25)),
+                0.0, 1.0);
+            const auto rate = this->params.Get<std::vector<float>>(
+                "vision_policy_target_max_xyz_rate", {0.12f, 0.20f, 0.08f});
+            for (int axis = 0; axis < 3; ++axis)
+            {
+                const double filtered = real_target_b_[axis] +
+                    alpha * (desired[axis] - real_target_b_[axis]);
+                const double maximum_step = 0.005 * rate[axis];
+                real_target_b_[axis] += std::clamp(
+                    filtered - real_target_b_[axis],
+                    -maximum_step, maximum_step);
+            }
+            this->SetRuntimeTargetCommands({
+                static_cast<float>(real_target_b_[0]),
+                static_cast<float>(real_target_b_[1]),
+                static_cast<float>(real_target_b_[2]),
+                0.0f, -0.707107f, 0.0f, 0.707107f});
+        }
+    }
+
     void RobotControl()
     {
         if (!b2_state_ready_.load() || !Z1StateValid())
@@ -786,6 +1336,22 @@ private:
         }
 
         this->GetState(&this->robot_state);
+        if (odometry_reset_detected_.exchange(false))
+        {
+            real_vision_fresh_ = false;
+            StopRealVision("B2 odometry reset detected");
+            live_trajectory_odom_.clear();
+            trajectory_history_odom_.clear();
+        }
+        this->IngestRealVisionTrajectory();
+        if (this->control.current_keyboard == Input::Keyboard::T)
+            this->ToggleRealVision();
+        if (real_vision_active_ &&
+            this->control.current_keyboard == Input::Keyboard::Space)
+            this->StopRealVision("operator emergency stop");
+        if (real_vision_active_ &&
+            this->control.current_keyboard == Input::Keyboard::P)
+            this->StopRealVision("operator passive request");
 
         // The policy was trained for the complete B2+Z1 system. Substituting
         // the arm state while leaving its real mass uncontrolled is unsafe.
@@ -813,12 +1379,21 @@ private:
         }
 
         this->StateController(&this->robot_state, &this->robot_command);
+        if (real_vision_active_ && !this->rl_init_done)
+            this->StopRealVision("policy is no longer active");
+        // Apply autonomous commands after the generic keyboard handler, just
+        // as the MuJoCo follower does. Manual W/A/S/D cannot overwrite a live
+        // visual path, while Space and P above remain immediate stop inputs.
+        this->UpdateRealVisionControl();
         this->control.x = std::clamp(
             this->control.x, -kRealLinearSpeedLimit, kRealLinearSpeedLimit);
         this->control.y = std::clamp(
             this->control.y, -kRealLateralSpeedLimit, kRealLateralSpeedLimit);
+        const float yaw_limit = real_vision_active_
+            ? this->params.Get<float>("real_vision_yaw_command_limit", 0.15f)
+            : kRealYawSpeedLimit;
         this->control.yaw = std::clamp(
-            this->control.yaw, -kRealYawSpeedLimit, kRealYawSpeedLimit);
+            this->control.yaw, -yaw_limit, yaw_limit);
         this->control.ClearInput();
         this->SetCommand(&this->robot_command);
     }
@@ -1160,6 +1735,50 @@ private:
         b2_state_ready_.store(true);
     }
 
+    void SportStateHandler(const void *message)
+    {
+        const auto state =
+            *static_cast<const unitree_go::msg::dds_::SportModeState_ *>(message);
+        TimedBasePose pose;
+        pose.monotonic_ns = SteadyNowNs();
+        for (int axis = 0; axis < 3; ++axis)
+            pose.position[axis] = state.position()[axis];
+        for (int axis = 0; axis < 4; ++axis)
+            pose.quaternion[axis] = state.imu_state().quaternion()[axis];
+        if (!NormalizeQuaternion(&pose.quaternion) ||
+            !std::all_of(pose.position.begin(), pose.position.end(),
+                         [](double value) { return std::isfinite(value); }))
+            return;
+
+        std::lock_guard<std::mutex> lock(sport_state_mutex_);
+        if (!base_pose_history_.empty())
+        {
+            const auto &previous = base_pose_history_.back();
+            const double dt = static_cast<double>(
+                pose.monotonic_ns - previous.monotonic_ns) * 1.0e-9;
+            const double jump = std::hypot(
+                pose.position[0] - previous.position[0],
+                pose.position[1] - previous.position[1]);
+            // A localization reset would reinterpret every cached crack point.
+            // Drop visual state rather than command a discontinuous turn.
+            if (dt > 0.0 && dt < 0.25 && jump > 0.75)
+            {
+                base_pose_history_.clear();
+                odometry_reset_detected_.store(true);
+                return;
+            }
+        }
+        base_pose_history_.push_back(pose);
+        const std::uint64_t history_ns = static_cast<std::uint64_t>(
+            1.0e9 * this->params.Get<double>(
+                "real_vision_pose_history_duration", 3.0));
+        while (base_pose_history_.size() > 2 &&
+               pose.monotonic_ns - base_pose_history_.front().monotonic_ns >
+                   history_ns)
+            base_pose_history_.pop_front();
+        sport_state_ready_.store(true);
+    }
+
     void JoystickHandler(const void *message)
     {
         std::lock_guard<std::mutex> lock(b2_state_mutex_);
@@ -1174,11 +1793,17 @@ private:
     unitree_go::msg::dds_::WirelessController_ joystick_{};
     ChannelPublisherPtr<unitree_go::msg::dds_::LowCmd_> lowcmd_publisher_;
     ChannelSubscriberPtr<unitree_go::msg::dds_::LowState_> lowstate_subscriber_;
+    ChannelSubscriberPtr<unitree_go::msg::dds_::SportModeState_>
+        sport_state_subscriber_;
     ChannelSubscriberPtr<unitree_go::msg::dds_::WirelessController_> joystick_subscriber_;
     KeySwitch key_switch_;
     std::mutex b2_state_mutex_;
     std::mutex b2_command_mutex_;
+    mutable std::mutex sport_state_mutex_;
+    std::deque<TimedBasePose> base_pose_history_;
     std::atomic<bool> b2_state_ready_{false};
+    std::atomic<bool> sport_state_ready_{false};
+    std::atomic<bool> odometry_reset_detected_{false};
     std::atomic<bool> safety_stop_{false};
     uint32_t last_audit_tick_ = 0;
     unsigned int transport_audit_count_ = 0;
@@ -1187,6 +1812,20 @@ private:
     bool diagnostic_only_ = false;
     bool joystick_was_active_ = false;
     bool previous_b2_target_q_valid_ = false;
+    bool real_vision_enabled_ = false;
+    bool real_vision_active_ = false;
+    bool real_vision_fresh_ = false;
+    bool real_vision_mtime_valid_ = false;
+    bool real_target_initialized_ = false;
+    float real_vision_stale_command_retain_ = 1.0f;
+    std::string real_vision_exchange_dir_ = "/tmp/b2_z1_real_vision";
+    std::filesystem::file_time_type real_vision_mtime_;
+    std::chrono::steady_clock::time_point real_vision_last_received_;
+    std::chrono::steady_clock::time_point real_vision_start_time_;
+    std::uint64_t real_vision_last_parse_warning_ns_ = 0;
+    std::vector<RealVisionPoint> live_trajectory_odom_;
+    std::vector<RealVisionPoint> trajectory_history_odom_;
+    std::array<double, 3> real_target_b_{{-0.775, 0.0, -0.35}};
     float b2_kp_scale_ = 1.0f;
     float b2_kd_scale_ = 1.0f;
     std::vector<float> previous_b2_target_q_;
@@ -1211,6 +1850,7 @@ int main(int argc, char **argv)
                   << " [--z1-own-port PORT] [--z1-skip-lowcmd]"
                   << " [--preflight] [--disable-z1] [--skip-motion-switcher]"
                   << " [--b2-kp-scale SCALE] [--b2-kd-scale SCALE]"
+                  << " [--vision] [--vision-exchange-dir DIR]"
                   << std::endl;
         return 1;
     }
@@ -1230,6 +1870,8 @@ int main(int argc, char **argv)
         bool disable_z1 = false;
         float b2_kp_scale = 1.0f;
         float b2_kd_scale = 1.0f;
+        bool enable_real_vision = false;
+        std::string vision_exchange_dir = "/tmp/b2_z1_real_vision";
         for (int i = 2; i < argc; ++i)
         {
             const std::string arg = argv[i];
@@ -1273,6 +1915,14 @@ int main(int argc, char **argv)
             {
                 b2_kd_scale = std::stof(argv[++i]);
             }
+            else if (arg == "--vision")
+            {
+                enable_real_vision = true;
+            }
+            else if (arg == "--vision-exchange-dir" && i + 1 < argc)
+            {
+                vision_exchange_dir = argv[++i];
+            }
             else
             {
                 throw std::runtime_error("Unknown or incomplete argument: " + arg);
@@ -1281,7 +1931,8 @@ int main(int argc, char **argv)
         RLRealB2Z1NoGun robot(
             argv[1], enable_motion_switcher, z1_ip, z1_to_port, z1_own_port,
             z1_skip_lowcmd, preflight_only, disable_z1,
-            b2_kp_scale, b2_kd_scale);
+            b2_kp_scale, b2_kd_scale, enable_real_vision,
+            vision_exchange_dir);
         if (robot.DiagnosticOnly())
         {
             return 0;

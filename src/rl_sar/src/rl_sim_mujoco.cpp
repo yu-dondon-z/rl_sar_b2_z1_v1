@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <iomanip>
 #include <limits>
 #include <sstream>
@@ -98,8 +99,13 @@ RL_Sim::RL_Sim(int argc, char **argv)
         this->vision_trajectory_enabled =
             this->scene_name == "scene_vision" &&
             this->params.Get<bool>("vision_trajectory_enabled", false);
-        this->vision_exchange_dir = this->params.Get<std::string>(
-            "vision_exchange_dir", "/tmp/b2_z1_mujoco_vision");
+        const char* exchange_dir_env =
+            std::getenv("RL_SAR_VISION_EXCHANGE_DIR");
+        this->vision_exchange_dir =
+            exchange_dir_env != nullptr && exchange_dir_env[0] != '\0'
+                ? std::string(exchange_dir_env)
+                : this->params.Get<std::string>(
+                      "vision_exchange_dir", "/tmp/b2_z1_mujoco_vision");
         this->vision_state_export_period = std::max(
             0.02, this->params.Get<double>(
                 "vision_state_export_period", 0.06));
@@ -458,6 +464,11 @@ void RL_Sim::ExportVisionState()
         output << std::setprecision(17) << this->mj_data->qpos[index]
                << (index + 1 == this->mj_model->nq ? '\n' : ' ');
     }
+    // Optional trailer consumed by the external vision overlay. Keeping it
+    // after qpos preserves compatibility with older bridge readers.
+    output << (this->trajectory_control_active ? 1 : 0) << ' '
+           << this->control.x << ' ' << this->control.y << ' '
+           << this->control.yaw << '\n';
     output.close();
     if (!output)
     {
@@ -597,6 +608,8 @@ bool RL_Sim::StartTrajectoryControl()
         this->trajectory_nearest_segment = 0;
         this->trajectory_control_active = true;
         this->trajectory_end_hold_active = false;
+        this->vision_loss_stop_active = false;
+        this->vision_loss_stop_start_time = -1.0;
         const auto nominal_target = this->params.Get<std::vector<float>>(
             "target_commands");
         this->vision_policy_target_start_b = {
@@ -616,6 +629,11 @@ bool RL_Sim::StartTrajectoryControl()
         this->vision_heading_command_initialized = true;
         this->vision_lateral_command = 0.0;
         this->vision_lateral_command_initialized = true;
+        this->vision_course_estimator_initialized = false;
+        this->vision_course_previous_time = -1.0;
+        this->vision_filtered_world_vx = 0.0;
+        this->vision_filtered_world_vy = 0.0;
+        this->vision_course_alignment_error = 0.0;
         this->trajectory_last_tracking_diagnostic_time = -1.0;
         this->trajectory_control_start_time = this->mj_data->time;
         this->UpdateTrajectoryControl();
@@ -686,6 +704,8 @@ bool RL_Sim::StartTrajectoryControl()
     this->trajectory_world_initialized = true;
     this->trajectory_control_active = true;
     this->trajectory_end_hold_active = false;
+    this->vision_loss_stop_active = false;
+    this->vision_loss_stop_start_time = -1.0;
     this->trajectory_last_tracking_diagnostic_time = -1.0;
     this->trajectory_control_start_time = this->mj_data->time;
     this->UpdateTrajectoryControl();
@@ -706,6 +726,8 @@ void RL_Sim::StopTrajectoryControl(
     }
     this->trajectory_control_active = false;
     this->trajectory_end_hold_active = hold_at_endpoint;
+    this->vision_loss_stop_active = false;
+    this->vision_loss_stop_start_time = -1.0;
     this->trajectory_control_start_time = -1.0;
     this->vision_rear_target_active = false;
     this->vision_policy_target_initialized = false;
@@ -713,6 +735,11 @@ void RL_Sim::StopTrajectoryControl(
     this->vision_heading_command = 0.0;
     this->vision_lateral_command_initialized = false;
     this->vision_lateral_command = 0.0;
+    this->vision_course_estimator_initialized = false;
+    this->vision_course_previous_time = -1.0;
+    this->vision_filtered_world_vx = 0.0;
+    this->vision_filtered_world_vy = 0.0;
+    this->vision_course_alignment_error = 0.0;
     this->control.x = 0.0f;
     this->control.y = 0.0f;
     this->control.yaw = 0.0f;
@@ -777,14 +804,52 @@ void RL_Sim::UpdateTrajectoryControl()
     if (this->vision_trajectory_enabled &&
         !this->vision_trajectory_fresh)
     {
-        // Do not automatically resume when the next camera frame happens to
-        // become valid.  That used to create a second gait start without an
-        // operator command and could topple the robot.  T must be pressed
-        // again after the vision window is VALID.
-        this->StopTrajectoryControl(
-            "live crack trajectory lost; press T after vision recovers",
-            false);
+        // Losing the bridge used to clear vx, yaw and the rear TCP command in
+        // one controller cycle.  That discontinuity can launch the body even
+        // though the last visual path and policy output were both valid.
+        // Ramp only the velocity command down while retaining the last TCP
+        // target, then enter the existing upright standing hold.
+        if (!this->vision_loss_stop_active)
+        {
+            this->vision_loss_stop_active = true;
+            this->vision_loss_stop_start_time = this->mj_data->time;
+            this->vision_loss_stop_start_control = {
+                this->control.x, this->control.y, this->control.yaw};
+            std::cout << LOGGER::WARNING
+                      << "[Vision] Live path lost; beginning bumpless stop."
+                      << std::endl;
+        }
+        const double stop_duration = std::max(
+            0.5, this->params.Get<double>(
+                "vision_loss_stop_duration", 2.5));
+        double blend = std::clamp(
+            (this->mj_data->time - this->vision_loss_stop_start_time) /
+                stop_duration,
+            0.0, 1.0);
+        blend = blend * blend * (3.0 - 2.0 * blend);
+        const float retain = static_cast<float>(1.0 - blend);
+        this->control.x = retain * this->vision_loss_stop_start_control[0];
+        this->control.y = retain * this->vision_loss_stop_start_control[1];
+        this->control.yaw = retain * this->vision_loss_stop_start_control[2];
+        if (blend >= 1.0)
+        {
+            this->StopTrajectoryControl(
+                "live crack trajectory lost after smooth deceleration",
+                true);
+        }
+        else
+        {
+            this->UpdateTrajectoryVisualization();
+        }
         return;
+    }
+    if (this->vision_loss_stop_active)
+    {
+        this->vision_loss_stop_active = false;
+        this->vision_loss_stop_start_time = -1.0;
+        std::cout << LOGGER::INFO
+                  << "[Vision] Live path recovered during smooth stop."
+                  << std::endl;
     }
 
     const mjtNum* base_pos = this->mj_data->xpos +
@@ -797,6 +862,10 @@ void RL_Sim::UpdateTrajectoryControl()
     double best_distance_squared = std::numeric_limits<double>::infinity();
     double nearest_arc_length =
         this->trajectory_world_points[this->trajectory_nearest_segment].s;
+    double nearest_projected_x =
+        this->trajectory_world_points[this->trajectory_nearest_segment].x;
+    double nearest_projected_y =
+        this->trajectory_world_points[this->trajectory_nearest_segment].y;
     std::size_t best_segment = this->trajectory_nearest_segment;
     const std::size_t search_end = this->vision_trajectory_enabled
         ? this->trajectory_world_points.size() - 1
@@ -833,6 +902,8 @@ void RL_Sim::UpdateTrajectoryControl()
             best_segment = index;
             nearest_arc_length = start.s +
                 projection * (end.s - start.s);
+            nearest_projected_x = projected_x;
+            nearest_projected_y = projected_y;
         }
     }
     this->trajectory_nearest_segment = best_segment;
@@ -909,6 +980,15 @@ void RL_Sim::UpdateTrajectoryControl()
         lookahead_delta_x * forward_x + lookahead_delta_y * forward_y;
     const double lookahead_lateral =
         lookahead_delta_x * left_x + lookahead_delta_y * left_y;
+    // Signed geometric cross-track error at the closest point on the path.
+    // This is intentionally distinct from lookahead_lateral: even a robot
+    // perfectly centred on a curved path sees its lookahead point to the
+    // inside of the bend. Treating that curvature displacement as tracking
+    // error double-counts steering and drives the base into the curve.
+    const double nearest_delta_x = nearest_projected_x - base_pos[0];
+    const double nearest_delta_y = nearest_projected_y - base_pos[1];
+    const double cross_track_lateral =
+        nearest_delta_x * left_x + nearest_delta_y * left_y;
 
     if (this->vision_trajectory_enabled)
     {
@@ -1094,7 +1174,7 @@ void RL_Sim::UpdateTrajectoryControl()
             0.0, this->params.Get<double>(
                 "trajectory_cross_track_gain", 0.8));
         const double raw_cross_track_heading = std::atan2(
-            cross_track_gain * lookahead_lateral,
+            cross_track_gain * cross_track_lateral,
             std::max(lookahead_forward, 0.10));
         // The deployed checkpoint is stable when it first receives the path
         // tangent, but a simultaneous full cross-track correction can upset
@@ -1117,7 +1197,7 @@ void RL_Sim::UpdateTrajectoryControl()
         path_heading_error = std::atan2(
             std::sin(combined_heading), std::cos(combined_heading));
     }
-    this->trajectory_path_lateral_error = lookahead_lateral;
+    this->trajectory_path_lateral_error = cross_track_lateral;
     this->trajectory_path_heading_error = path_heading_error;
     const double heading_gain = this->params.Get<double>(
         "trajectory_heading_gain", 1.0);
@@ -1168,11 +1248,87 @@ void RL_Sim::UpdateTrajectoryControl()
         const double controller_dt = std::max(
             1.0e-4, static_cast<double>(this->params.Get<float>("dt")));
 
-        // The exact RearVisionTrajectoryCommand used for this checkpoint
-        // always emitted [vx, 0, wz].  The legacy deployment added a body-y
-        // correction here, which moved the actor outside its training
-        // command distribution and disturbed diagonal foot timing.  Keep the
-        // old path available only as an explicit compatibility option.
+        // Estimate the true world-frame course from successive base poses.
+        // Do not reuse obs.lin_vel here: its sensor/quaternion convention is
+        // tailored to policy observations and its lateral sign is not the
+        // geometric left axis used by this path follower.
+        const double sideslip_filter_tau = std::max(
+            controller_dt,
+            this->params.Get<double>(
+                "vision_sideslip_filter_time_constant", 1.50));
+        if (!this->vision_course_estimator_initialized)
+        {
+            this->vision_course_previous_time = this->mj_data->time;
+            this->vision_course_previous_x = base_pos[0];
+            this->vision_course_previous_y = base_pos[1];
+            this->vision_filtered_world_vx = 0.0;
+            this->vision_filtered_world_vy = 0.0;
+            this->vision_course_estimator_initialized = true;
+        }
+        else
+        {
+            const double course_dt =
+                this->mj_data->time - this->vision_course_previous_time;
+            if (course_dt > 1.0e-5 && course_dt < 0.20)
+            {
+                const double measured_world_vx =
+                    (base_pos[0] - this->vision_course_previous_x) /
+                    course_dt;
+                const double measured_world_vy =
+                    (base_pos[1] - this->vision_course_previous_y) /
+                    course_dt;
+                const double sideslip_filter_alpha =
+                    1.0 - std::exp(-course_dt / sideslip_filter_tau);
+                this->vision_filtered_world_vx += sideslip_filter_alpha *
+                    (measured_world_vx - this->vision_filtered_world_vx);
+                this->vision_filtered_world_vy += sideslip_filter_alpha *
+                    (measured_world_vy - this->vision_filtered_world_vy);
+            }
+            this->vision_course_previous_time = this->mj_data->time;
+            this->vision_course_previous_x = base_pos[0];
+            this->vision_course_previous_y = base_pos[1];
+        }
+
+        const double filtered_body_vx =
+            this->vision_filtered_world_vx * forward_x +
+            this->vision_filtered_world_vy * forward_y;
+        const double filtered_body_vy =
+            this->vision_filtered_world_vx * left_x +
+            this->vision_filtered_world_vy * left_y;
+
+        // The path loop can keep the world trajectory straight while the
+        // learned gait leaves the base yawed a few degrees relative to its
+        // actual course. Turn the base toward the gait-averaged course so
+        // body heading and travel direction converge, without asking the
+        // policy to crab sideways.
+        const double course_min_speed = std::max(
+            0.0, this->params.Get<double>(
+                "vision_course_alignment_min_forward_speed", 0.12));
+        if (this->params.Get<bool>(
+                "vision_enable_course_alignment", true) &&
+            filtered_body_vx > course_min_speed)
+        {
+            const double course_slip = std::atan2(
+                filtered_body_vy, std::max(filtered_body_vx, 0.05));
+            this->vision_course_alignment_error = course_slip;
+            const double course_gain = std::max(
+                0.0, this->params.Get<double>(
+                    "vision_course_alignment_gain", 1.20));
+            const double course_limit = std::max(
+                0.0, this->params.Get<double>(
+                    "vision_course_alignment_yaw_limit", 0.08));
+            requested_yaw += steering_blend * std::clamp(
+                course_gain * course_slip, -course_limit, course_limit);
+            requested_yaw = std::clamp(
+                requested_yaw, -vision_yaw_limit, vision_yaw_limit);
+        }
+        else
+        {
+            this->vision_course_alignment_error = 0.0;
+        }
+
+        // The training command supports an optional geometric body-y path
+        // correction. Keep that mode separate from sideslip compensation.
         if (this->params.Get<bool>(
                 "vision_enable_lateral_velocity_correction", false))
         {
@@ -1183,7 +1339,7 @@ void RL_Sim::UpdateTrajectoryControl()
                 0.0, this->params.Get<double>(
                          "vision_lateral_command_limit", 0.08));
             const double requested_lateral = std::clamp(
-                lateral_gain * lookahead_lateral,
+                lateral_gain * cross_track_lateral,
                 -lateral_limit, lateral_limit) * steering_blend;
             if (!this->vision_lateral_command_initialized)
             {
@@ -1214,9 +1370,40 @@ void RL_Sim::UpdateTrajectoryControl()
         }
         else
         {
-            this->vision_lateral_command = 0.0;
-            this->vision_lateral_command_initialized = true;
-            this->control.y = 0.0f;
+            double requested_lateral = 0.0;
+            const double sideslip_min_speed = std::max(
+                0.0, this->params.Get<double>(
+                    "vision_sideslip_min_forward_speed", 0.12));
+            if (this->params.Get<bool>(
+                    "vision_enable_sideslip_compensation", false) &&
+                filtered_body_vx > sideslip_min_speed)
+            {
+                const double sideslip_gain = std::max(
+                    0.0, this->params.Get<double>(
+                        "vision_sideslip_compensation_gain", 0.80));
+                const double sideslip_limit = std::max(
+                    0.0, this->params.Get<double>(
+                        "vision_sideslip_command_limit", 0.025));
+                requested_lateral = std::clamp(
+                    -sideslip_gain * filtered_body_vy,
+                    -sideslip_limit, sideslip_limit) * steering_blend;
+            }
+            if (!this->vision_lateral_command_initialized)
+            {
+                this->vision_lateral_command = 0.0;
+                this->vision_lateral_command_initialized = true;
+            }
+            const double sideslip_rate_limit = std::max(
+                0.0, this->params.Get<double>(
+                    "vision_sideslip_command_rate_limit", 0.015));
+            const double max_sideslip_step =
+                sideslip_rate_limit * controller_dt;
+            this->vision_lateral_command = std::clamp(
+                requested_lateral,
+                this->vision_lateral_command - max_sideslip_step,
+                this->vision_lateral_command + max_sideslip_step);
+            this->control.y = static_cast<float>(
+                this->vision_lateral_command);
         }
 
         if (!this->vision_heading_command_initialized)
@@ -1847,6 +2034,11 @@ void RL_Sim::RobotControl()
             this->vision_heading_command = 0.0;
             this->vision_lateral_command_initialized = false;
             this->vision_lateral_command = 0.0;
+            this->vision_course_estimator_initialized = false;
+            this->vision_course_previous_time = -1.0;
+            this->vision_filtered_world_vx = 0.0;
+            this->vision_filtered_world_vy = 0.0;
+            this->vision_course_alignment_error = 0.0;
             this->trajectory_last_tracking_diagnostic_time = -1.0;
             this->trajectory_control_start_time = -1.0;
             this->vision_trajectory_mtime_valid = false;

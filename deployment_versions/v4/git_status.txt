@@ -1,0 +1,4 @@
+## main...origin/main
+Current deployment source snapshot selected from /home/dong/rl_sar_b2_z1.
+Included: runtime source, B2+Z1 model, policies, visual bridge, checks, docs and VS Code launch configuration.
+Excluded: build outputs, caches, deployment_backups, older local working copies and nested Git metadata.

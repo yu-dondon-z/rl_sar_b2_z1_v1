@@ -37,6 +37,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--threshold", type=float, default=0.55)
     parser.add_argument(
+        "--dark-threshold",
+        type=int,
+        default=130,
+        help="grayscale threshold for the synthetic physical-crack fallback",
+    )
+    parser.add_argument(
+        "--ignore-bottom-rows",
+        type=int,
+        default=50,
+        help="mask the bottom camera strip where the B2 body occludes the road",
+    )
+    parser.add_argument(
         "--segmentation-mode",
         choices=("network", "hybrid", "dark"),
         default="hybrid",
@@ -53,7 +65,10 @@ def parse_args() -> argparse.Namespace:
         "--path-ground-z",
         type=float,
         default=None,
-        help="optionally override RGB-D z with a known flat road height",
+        help=(
+            "intersect segmented camera rays with this known flat road "
+            "height instead of sampling RGB-D"
+        ),
     )
     # A few millimetres of display lift prevents z-fighting with the road.
     parser.add_argument("--path-height-offset", type=float, default=0.005)
@@ -80,7 +95,27 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--min-forward", type=float, default=0.25)
     parser.add_argument("--max-forward", type=float, default=5.0)
+    parser.add_argument(
+        "--max-lateral",
+        type=float,
+        default=3.0,
+        help="maximum absolute lateral extent retained from the camera path",
+    )
     parser.add_argument("--spacing-m", type=float, default=0.04)
+    parser.add_argument("--minimum-path-length", type=float, default=0.45)
+    parser.add_argument("--minimum-path-span", type=float, default=0.35)
+    parser.add_argument(
+        "--cache-hold-seconds",
+        type=float,
+        default=4.0,
+        help="keep publishing a validated world path across short vision dropouts",
+    )
+    parser.add_argument(
+        "--cache-behind",
+        type=float,
+        default=1.2,
+        help="ordered path distance retained behind the base for a rear TCP",
+    )
     parser.add_argument("--display", action="store_true")
     parser.add_argument("--save-overlay", action="store_true")
     parser.add_argument("--max-frames", type=int, default=0)
@@ -100,7 +135,14 @@ def read_state(path: Path, expected_nq: int):
     qpos = np.asarray(text[3 : 3 + nq], dtype=np.float64)
     if not np.all(np.isfinite(qpos)):
         raise ValueError("state contains non-finite qpos")
-    return sequence, sim_time, qpos
+    trailer = text[3 + nq :]
+    following = bool(int(trailer[0])) if len(trailer) >= 1 else False
+    command = (
+        np.asarray(trailer[1:4], dtype=np.float64)
+        if len(trailer) >= 4
+        else np.zeros(3, dtype=np.float64)
+    )
+    return sequence, sim_time, qpos, following, command
 
 
 def write_text_atomic(path: Path, text: str) -> None:
@@ -109,9 +151,40 @@ def write_text_atomic(path: Path, text: str) -> None:
     temporary.replace(path)
 
 
-def dark_line_mask(image_bgr: np.ndarray) -> np.ndarray:
+def write_trajectory_atomic(
+    path: Path,
+    sequence: int,
+    sim_time: float,
+    source: str,
+    points_world: np.ndarray,
+) -> None:
+    lines = [
+        f"# sequence {sequence}",
+        f"# sim_time {sim_time:.9f}",
+        f"# source {source}",
+    ]
+    lines.extend(
+        f"{point[0]:.7f},{point[1]:.7f},{point[2]:.7f}"
+        for point in points_world
+    )
+    write_text_atomic(path, "\n".join(lines) + "\n")
+
+
+def dark_line_mask(
+    image_bgr: np.ndarray,
+    threshold: int = 130,
+    ignore_bottom_rows: int = 50,
+) -> np.ndarray:
     gray = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2GRAY)
-    mask = np.where(gray < 55, 255, 0).astype(np.uint8)
+    mask = np.where(gray < threshold, 255, 0).astype(np.uint8)
+    # The built-in camera sees a horizontal strip of the B2 body at the
+    # bottom of the image. On a bend that strip touches the physical crack,
+    # turning both into one connected component and sending the skeletonizer
+    # sideways. Remove only this self-occluded region; the crack immediately
+    # above it remains the closest valid component to the adjusted anchor.
+    ignored = min(max(int(ignore_bottom_rows), 0), mask.shape[0] - 1)
+    if ignored > 0:
+        mask[-ignored:, :] = 0
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
     return cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
 
@@ -134,10 +207,67 @@ def network_guided_dark_mask(
     return cv2.morphologyEx(fused, cv2.MORPH_CLOSE, close_kernel)
 
 
+def project_pixels_to_horizontal_plane(
+    pixels_uv: np.ndarray,
+    camera,
+    transform_world_optical: np.ndarray,
+    plane_z: float,
+    minimum_range: float,
+    maximum_range: float,
+):
+    """Intersect optical rays with a known horizontal world plane.
+
+    A 2 cm synthetic groove becomes sub-pixel in far-field depth. Sampling
+    the MuJoCo depth buffer there therefore returns the adjacent road surface
+    or no usable point at all. For a known flat road, ray-plane intersection
+    is both less noisy and geometrically correct for the crack centreline.
+    Real RGB-D operation keeps using ``project_pixels_with_depth`` when the
+    plane override is not supplied.
+    """
+    pixels = np.asarray(pixels_uv, dtype=np.float64)
+    points = np.full((len(pixels), 3), np.nan, dtype=np.float64)
+    if len(pixels) == 0:
+        return points, np.zeros(0, dtype=bool)
+
+    rays_optical = np.column_stack((
+        (pixels[:, 0] - camera.cx) / camera.fx,
+        (pixels[:, 1] - camera.cy) / camera.fy,
+        np.ones(len(pixels), dtype=np.float64),
+    ))
+    rotation = transform_world_optical[:3, :3]
+    origin = transform_world_optical[:3, 3]
+    rays_world = (rotation @ rays_optical.T).T
+    denominator = rays_world[:, 2]
+    valid = np.isfinite(rays_world).all(axis=1) & (
+        np.abs(denominator) > 1.0e-8
+    )
+    scale = np.full(len(pixels), np.nan, dtype=np.float64)
+    scale[valid] = (float(plane_z) - origin[2]) / denominator[valid]
+    points[valid] = origin[None, :] + scale[valid, None] * rays_world[valid]
+    ranges = np.linalg.norm(points - origin[None, :], axis=1)
+    valid &= (
+        (scale > 0.0)
+        & np.isfinite(points).all(axis=1)
+        & np.isfinite(ranges)
+        & (ranges >= minimum_range)
+        & (ranges <= maximum_range)
+    )
+    points[~valid] = np.nan
+    return points, valid
+
+
 def main() -> None:
     args = parse_args()
+    if args.cache_behind < 1.0:
+        raise ValueError(
+            "--cache-behind must be at least 1.0 m for the rear-mounted TCP"
+        )
     if args.physical_crack_min_depth < 0.0:
         raise ValueError("--physical-crack-min-depth must be non-negative")
+    if not 0 <= args.dark_threshold <= 255:
+        raise ValueError("--dark-threshold must be in [0, 255]")
+    if not 0 <= args.ignore_bottom_rows < args.height:
+        raise ValueError("--ignore-bottom-rows must be in [0, image height)")
     if args.physical_crack_max_depth < args.physical_crack_min_depth:
         raise ValueError(
             "--physical-crack-max-depth must be >= --physical-crack-min-depth"
@@ -206,6 +336,7 @@ def main() -> None:
     last_sequence = -1
     processed = 0
     cached_path_world = np.empty((0, 3), dtype=np.float64)
+    last_valid_wall_time = -np.inf
     print(
         f"[Vision] scene={args.scene} camera={args.camera} "
         f"mode={args.segmentation_mode} exchange={exchange}"
@@ -213,7 +344,9 @@ def main() -> None:
     try:
         while args.max_frames <= 0 or processed < args.max_frames:
             try:
-                sequence, sim_time, qpos = read_state(state_path, model.nq)
+                sequence, sim_time, qpos, following, command = read_state(
+                    state_path, model.nq
+                )
             except (FileNotFoundError, OSError, TypeError, ValueError):
                 time.sleep(args.poll_period)
                 continue
@@ -228,14 +361,27 @@ def main() -> None:
             data.qpos[:] = qpos
             data.qvel[:] = 0.0
             mujoco.mj_forward(model, data)
+            base_position = np.asarray(data.xpos[base_id], dtype=np.float64)
+            base_rotation = np.asarray(
+                data.xmat[base_id], dtype=np.float64
+            ).reshape(3, 3)
+            forward = base_rotation[:, 0].copy()
+            forward[2] = 0.0
+            forward /= max(float(np.linalg.norm(forward)), 1.0e-9)
             renderer.disable_depth_rendering()
             renderer.update_scene(data, camera=args.camera)
             rgb = renderer.render().copy()
             image_bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
-            renderer.enable_depth_rendering()
-            renderer.update_scene(data, camera=args.camera)
-            depth = renderer.render().copy()
-            renderer.disable_depth_rendering()
+            if args.path_ground_z is None:
+                # Real RGB-D deployment needs aligned depth. In the known-flat
+                # MuJoCo test scene, camera rays are intersected directly with
+                # the road plane, so a second full render is pure overhead.
+                renderer.enable_depth_rendering()
+                renderer.update_scene(data, camera=args.camera)
+                depth = renderer.render().copy()
+                renderer.disable_depth_rendering()
+            else:
+                depth = None
 
             network_result = (
                 segmenter.predict_bgr(image_bgr) if segmenter is not None else None
@@ -243,7 +389,11 @@ def main() -> None:
             masks = []
             dark_mask = None
             if args.segmentation_mode in ("hybrid", "dark"):
-                dark_mask = dark_line_mask(image_bgr)
+                dark_mask = dark_line_mask(
+                    image_bgr,
+                    args.dark_threshold,
+                    args.ignore_bottom_rows,
+                )
             if args.segmentation_mode == "hybrid" and network_result is not None:
                 # Prefer the semantic/geometric agreement.  Fall back in both
                 # directions so a domain-gap network miss or poor illumination
@@ -261,6 +411,7 @@ def main() -> None:
 
             accepted = None
             last_error = "no segmentation candidate"
+            candidate_errors = []
             for source, mask in masks:
                 try:
                     area_ratio = float(np.mean(mask > 0))
@@ -271,7 +422,10 @@ def main() -> None:
                     centerline = extract_centerline(
                         mask,
                         centerline_config,
-                        ((args.width - 1.0) / 2.0, float(args.height - 1)),
+                        (
+                            (args.width - 1.0) / 2.0,
+                            float(args.height - args.ignore_bottom_rows - 1),
+                        ),
                     )
 
                     camera_position = np.asarray(
@@ -289,13 +443,23 @@ def main() -> None:
                     transform = np.eye(4, dtype=np.float64)
                     transform[:3, :3] = rotation_world_optical
                     transform[:3, 3] = camera_position
-                    points_world, valid, _ = project_pixels_with_depth(
-                        centerline.waypoints_uv,
-                        depth,
-                        camera,
-                        transform,
-                        depth_config,
-                    )
+                    if args.path_ground_z is None:
+                        points_world, valid, _ = project_pixels_with_depth(
+                            centerline.waypoints_uv,
+                            depth,
+                            camera,
+                            transform,
+                            depth_config,
+                        )
+                    else:
+                        points_world, valid = project_pixels_to_horizontal_plane(
+                            centerline.waypoints_uv,
+                            camera,
+                            transform,
+                            args.path_ground_z,
+                            depth_config.min_depth_m,
+                            depth_config.max_depth_m,
+                        )
                     if args.physical_crack_surface_z is not None:
                         # A dark appearance alone is not enough: shadows,
                         # chassis pixels and the road texture can all satisfy
@@ -319,13 +483,6 @@ def main() -> None:
                     if len(control) < 4:
                         raise RuntimeError("fewer than four valid 3-D points")
 
-                    base_position = np.asarray(data.xpos[base_id], dtype=np.float64)
-                    base_rotation = np.asarray(
-                        data.xmat[base_id], dtype=np.float64
-                    ).reshape(3, 3)
-                    forward = base_rotation[:, 0].copy()
-                    forward[2] = 0.0
-                    forward /= max(float(np.linalg.norm(forward)), 1.0e-9)
                     left = np.array([-forward[1], forward[0], 0.0])
                     relative = control - base_position
                     longitudinal = relative @ forward
@@ -334,14 +491,19 @@ def main() -> None:
                         np.isfinite(control).all(axis=1)
                         & (longitudinal >= args.min_forward)
                         & (longitudinal <= args.max_forward)
-                        & (np.abs(lateral) <= 1.25)
+                        & (np.abs(lateral) <= args.max_lateral)
                     )
                     control = control[usable]
                     longitudinal = longitudinal[usable]
                     if len(control) < 4:
                         raise RuntimeError("projected path is outside the forward workspace")
-                    order = np.argsort(longitudinal)
-                    control = control[order]
+                    # ``extract_centerline`` already returns a connected path.
+                    # Sorting every point by body-forward distance destroys
+                    # that topology at a 90-degree bend, where many points can
+                    # have the same longitudinal coordinate. Only correct a
+                    # possible global reversal and preserve curve order.
+                    if longitudinal[0] > longitudinal[-1]:
+                        control = control[::-1].copy()
                     if args.path_ground_z is None:
                         # A physical groove must retain the depth measured by
                         # RGB-D; otherwise a 3-D crack is silently flattened.
@@ -356,7 +518,10 @@ def main() -> None:
                     span = float(
                         (control[-1, :2] - control[0, :2]) @ forward[:2]
                     )
-                    if length < 0.45 or span < 0.35:
+                    if (
+                        length < args.minimum_path_length
+                        or span < args.minimum_path_span
+                    ):
                         raise RuntimeError(
                             f"path too short: length={length:.2f}, span={span:.2f}"
                         )
@@ -367,65 +532,140 @@ def main() -> None:
                     break
                 except (RuntimeError, TypeError, ValueError) as error:
                     last_error = f"{source}: {error}"
+                    candidate_errors.append(last_error)
 
             if accepted is None:
-                trajectory_path.unlink(missing_ok=True)
-                write_text_atomic(
-                    status_path,
-                    f"INVALID sequence={sequence} sim_time={sim_time:.3f} {last_error}\n",
+                if candidate_errors:
+                    last_error = "; ".join(candidate_errors)
+                cache_age = time.monotonic() - last_valid_wall_time
+                cached_remaining = 0.0
+                if len(cached_path_world) >= 4:
+                    nearest_cache = int(np.argmin(np.linalg.norm(
+                        cached_path_world[:, :2] - base_position[None, :2],
+                        axis=1,
+                    )))
+                    if nearest_cache + 1 < len(cached_path_world):
+                        cached_remaining = float(np.linalg.norm(
+                            np.diff(cached_path_world[nearest_cache:, :2], axis=0),
+                            axis=1,
+                        ).sum())
+                using_cache = (
+                    len(cached_path_world) >= 4
+                    and cache_age <= args.cache_hold_seconds
+                    and cached_remaining >= max(0.80, args.minimum_path_length)
                 )
-                overlay = image_bgr
-                status = f"INVALID: {last_error}"
+                if using_cache:
+                    # Refresh the file timestamp as well as its sequence. The
+                    # controller can safely follow this already validated
+                    # world-frame polyline while the next camera frame
+                    # reacquires the crack.
+                    write_trajectory_atomic(
+                        trajectory_path,
+                        sequence,
+                        sim_time,
+                        "validated cache",
+                        cached_path_world,
+                    )
+                    write_text_atomic(
+                        status_path,
+                        f"CACHED sequence={sequence} sim_time={sim_time:.3f} "
+                        f"following={int(following)} age={cache_age:.2f} "
+                        f"remaining={cached_remaining:.2f} {last_error}\n",
+                    )
+                    overlay = image_bgr
+                    status = (
+                        f"CACHED PATH: age {cache_age:.1f} s, "
+                        f"{cached_remaining:.1f} m remaining"
+                    )
+                else:
+                    trajectory_path.unlink(missing_ok=True)
+                    write_text_atomic(
+                        status_path,
+                        f"INVALID sequence={sequence} sim_time={sim_time:.3f} "
+                        f"following={int(following)} cache_age={cache_age:.2f} "
+                        f"cache_remaining={cached_remaining:.2f} {last_error}\n",
+                    )
+                    overlay = image_bgr
+                    status = f"INVALID: {last_error}"
             else:
                 (
                     source, mask, centerline, control, length, area_ratio,
                     base_position, forward,
                 ) = accepted
+                last_valid_wall_time = time.monotonic()
                 if len(cached_path_world) == 0:
                     cached_path_world = control.copy()
                 else:
-                    accepted_points = []
-                    for point in control:
-                        distance = np.linalg.norm(
-                            cached_path_world[:, :2] - point[None, :2], axis=1
-                        )
-                        if float(np.min(distance)) >= 0.03:
-                            accepted_points.append(point)
-                    if accepted_points:
-                        cached_path_world = np.vstack(
-                            (cached_path_world, np.asarray(accepted_points))
-                        )
+                    # Extend the ordered history only beyond its existing
+                    # tail. Re-sorting the accumulated cloud by the current
+                    # body-forward axis works for a straight line, but folds a
+                    # 90-degree route back on itself and corrupts arc length.
+                    tail_distance = np.linalg.norm(
+                        control[:, :2] - cached_path_world[-1, :2], axis=1
+                    )
+                    tail_match = int(np.argmin(tail_distance))
+                    if float(tail_distance[tail_match]) <= 0.20:
+                        extension = control[tail_match + 1 :]
+                        for point in extension:
+                            if np.linalg.norm(
+                                point[:2] - cached_path_world[-1, :2]
+                            ) >= 0.025:
+                                cached_path_world = np.vstack(
+                                    (cached_path_world, point[None, :])
+                                )
+                    else:
+                        # If the camera skipped enough frames that the two
+                        # polylines do not overlap, append only across a small
+                        # plausible gap. Larger jumps indicate a false mask;
+                        # retaining the last coherent cache is safer.
+                        gap = float(np.linalg.norm(
+                            control[0, :2] - cached_path_world[-1, :2]
+                        ))
+                        if gap <= 0.35:
+                            cached_path_world = np.vstack(
+                                (cached_path_world, control)
+                            )
 
+                # Discard old history by path order, not by longitudinal
+                # projection. The latter removes the incoming straight while
+                # the base rotates through the bend. Keep about 2 m behind the
+                # point nearest the base so the rear-mounted TCP still has a
+                # continuous target.  The rear TCP samples around -0.78 m, so
+                # 1.2 m is sufficient without retaining a long history.
+                base_distance = np.linalg.norm(
+                    cached_path_world[:, :2] - base_position[None, :2], axis=1
+                )
+                nearest_cache = int(np.argmin(base_distance))
+                cache_start = nearest_cache
+                retained_behind = 0.0
+                while cache_start > 0 and retained_behind < args.cache_behind:
+                    retained_behind += float(np.linalg.norm(
+                        cached_path_world[cache_start, :2]
+                        - cached_path_world[cache_start - 1, :2]
+                    ))
+                    cache_start -= 1
+                cached_path_world = cached_path_world[cache_start:]
                 cache_longitudinal = (
                     cached_path_world - base_position[None, :]
                 ) @ forward
-                keep = (
-                    (cache_longitudinal >= -2.0)
-                    & (cache_longitudinal <= args.max_forward + 0.5)
-                )
-                cached_path_world = cached_path_world[keep]
-                cache_longitudinal = cache_longitudinal[keep]
-                order = np.argsort(cache_longitudinal)
-                cached_path_world = cached_path_world[order]
-                sorted_longitudinal = cache_longitudinal[order]
+                sorted_longitudinal = cache_longitudinal
                 rear_points = int(np.count_nonzero(
                     (sorted_longitudinal >= -1.0)
                     & (sorted_longitudinal <= -0.55)
                 ))
-                lines = [
-                    f"# sequence {sequence}",
-                    f"# sim_time {sim_time:.9f}",
-                    f"# source {source}",
-                ]
-                lines.extend(
-                    f"{point[0]:.7f},{point[1]:.7f},{point[2]:.7f}"
-                    for point in cached_path_world
+                write_trajectory_atomic(
+                    trajectory_path,
+                    sequence,
+                    sim_time,
+                    source,
+                    cached_path_world,
                 )
-                write_text_atomic(trajectory_path, "\n".join(lines) + "\n")
                 write_text_atomic(
                     status_path,
                     (
                         f"VALID sequence={sequence} sim_time={sim_time:.3f} "
+                        f"following={int(following)} "
+                        f"command={command[0]:.3f},{command[1]:.3f},{command[2]:.3f} "
                         f"source={source} current_points={len(control)} "
                         f"cached_points={len(cached_path_world)} "
                         f"rear_points={rear_points} "
@@ -440,7 +680,13 @@ def main() -> None:
                     else f"VALID {source}: {len(control)} points, {length:.2f} m"
                 )
 
-            color = (40, 220, 40) if accepted is not None else (20, 20, 240)
+            mode_text = "FOLLOWING" if following else "IDLE - click MuJoCo and press T"
+            status = f"{mode_text} | {status}"
+            color = (
+                (40, 220, 40)
+                if accepted is not None
+                else ((0, 180, 255) if using_cache else (20, 20, 240))
+            )
             cv2.putText(
                 overlay, status, (12, 28), cv2.FONT_HERSHEY_SIMPLEX,
                 0.55, color, 2, cv2.LINE_AA,
@@ -453,7 +699,11 @@ def main() -> None:
                 mask_panel = (
                     accepted[1] if accepted is not None
                     else (network_result.mask if network_result is not None
-                          else dark_line_mask(image_bgr))
+                          else dark_line_mask(
+                              image_bgr,
+                              args.dark_threshold,
+                              args.ignore_bottom_rows,
+                          ))
                 )
                 mask_bgr = cv2.cvtColor(mask_panel, cv2.COLOR_GRAY2BGR)
                 panel = np.hstack((image_bgr, mask_bgr, overlay))

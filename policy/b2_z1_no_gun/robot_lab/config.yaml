@@ -257,10 +257,17 @@ b2_z1_no_gun/robot_lab:
   trajectory_cruise_speed: 0.30
   # Use a nearer base target and a local metre-scale chord. Far image points
   # remain cached for continuity but no longer dominate the current heading.
-  trajectory_base_lookahead: 1.00
-  vision_heading_chord_length: 1.00
-  trajectory_heading_gain: 0.80
-  trajectory_cross_track_gain: 0.45
+  # Begin steering before the curve reaches the edge of the front camera.
+  # A 1.5 m look-ahead is still local relative to the 10 m test radius and
+  # keeps the requested yaw inside the policy's trained +/-0.15 rad/s range.
+  trajectory_base_lookahead: 1.50
+  vision_heading_chord_length: 1.20
+  # MuJoCo A/B telemetry showed that a 0.10 rad/s policy command produced
+  # only about 0.02--0.05 rad/s at the base. Increase the outer-loop request
+  # so the physical base heading, rather than only the commanded heading,
+  # converges to the crack tangent.
+  trajectory_heading_gain: 2.50
+  trajectory_cross_track_gain: 0.80
   trajectory_cross_track_heading_limit: 0.12
   trajectory_cross_track_ramp_time: 3.5
   # Keep Cartesian residual IK disabled.  The policy now receives the same
@@ -284,13 +291,35 @@ b2_z1_no_gun/robot_lab:
   # Keep the cross-track controller, but feed it into the whole-body policy
   # through the deployment-verified gentle yaw envelope.  Applying the full
   # training command in one step can topple MuJoCo during the first diagonal.
-  vision_heading_command_limit: 0.15
-  vision_heading_filter_time_constant: 0.80
-  vision_heading_command_rate_limit: 0.08
-  # RearVisionTrajectoryCommand used for this training run always generated
-  # [vx, 0, wz].  Keep the legacy omnidirectional correction disabled so the
-  # deployed policy never receives an out-of-distribution vy command.
+  vision_heading_command_limit: 0.30
+  vision_heading_filter_time_constant: 0.25
+  vision_heading_command_rate_limit: 0.30
+  # If both live perception and its validated cache expire, preserve the TCP
+  # target and remove locomotion commands with a zero-slope ramp instead of
+  # clearing all observations in one 20 ms policy step.
+  vision_loss_stop_duration: 2.50
+  # Keep body-y at zero so the commanded velocity vector stays aligned with
+  # B2's forward axis. Cross-track error is corrected by turning the base,
+  # which avoids the visible crab angle produced by direct lateral motion.
   vision_enable_lateral_velocity_correction: false
+  vision_lateral_correction_gain: 0.35
+  vision_lateral_command_limit: 0.08
+  vision_lateral_filter_time_constant: 1.00
+  vision_lateral_command_rate_limit: 0.04
+  # Regulate the gait-averaged body lateral velocity to zero. This is a small
+  # deployment-bias correction, not a geometric sideways path command.
+  vision_enable_sideslip_compensation: false
+  vision_sideslip_filter_time_constant: 1.50
+  vision_sideslip_min_forward_speed: 0.12
+  vision_sideslip_compensation_gain: 1.00
+  vision_sideslip_command_limit: 0.030
+  vision_sideslip_command_rate_limit: 0.010
+  # Align the base forward axis with the gait-averaged direction of travel.
+  # Unlike a vy command this corrects the visible crab angle through yaw.
+  vision_enable_course_alignment: true
+  vision_course_alignment_min_forward_speed: 0.12
+  vision_course_alignment_gain: 1.50
+  vision_course_alignment_yaw_limit: 0.08
   # The old 3 s delay allowed the open-loop gait bias to build 0.25--0.30 m
   # lateral error before correction began. Start only after the 0.5 s leg
   # handoff, then retain the slow yaw filter/rate limit for stability.
@@ -305,6 +334,13 @@ b2_z1_no_gun/robot_lab:
                     0.80,  0.80, 1.00,  1.00, 0.00,
                    -1.50, -1.50, -1.50, -1.50, 2.55, -1.60,
                    -1.40,  0.00, 0.00]
+  # Deployment-only stand target; do not change default_dof_pos because the
+  # actor was normalized and trained around that asymmetric configuration.
+  deployment_stand_dof_pos: [0.00, 0.00, 0.00, 0.00,
+                             0.80, 0.80, 0.80, 0.80, 0.00,
+                            -1.50,-1.50,-1.50,-1.50, 2.18,-1.60,
+                            -0.90, 0.00, 0.00]
+  deployment_stand_max_joint_error: 0.12
 
   # Keep policy/controller indexing identical. Real B2 DDS routing uses
   # b2_dds_mapping from base.yaml; Z1 uses z1_policy_indices separately.

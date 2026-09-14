@@ -22,15 +22,28 @@ b2_z1_no_gun:
   # world-frame waypoints without entering the 50 Hz policy thread.
   vision_trajectory_enabled: true
   vision_exchange_dir: "/tmp/b2_z1_mujoco_vision"
-  vision_state_export_period: 0.06
-  # RHACrackNet + the MuJoCo RGB-D renderer updates at roughly 2.5--3 Hz on
-  # this machine.  Keep stale-data protection, but tolerate one delayed frame.
-  vision_trajectory_stale_timeout: 0.80
+  # Ten-Hz perception is sufficient for a 0.30 m/s path follower; the
+  # controller continues at 50 Hz using the latest validated world path.
+  vision_state_export_period: 0.10
+  # The bridge republishes a validated world-frame cache across brief
+  # segmentation dropouts. Tolerate several renderer frames, while still
+  # stopping if the bridge process itself disappears.
+  vision_trajectory_stale_timeout: 1.50
   vision_minimum_forward_path: 0.65
   # Front RGB-D guides the base. Cached crack points are handed to the
   # rear-facing Z1 only after they enter its trained rear workspace.
   vision_rear_work_x_min: -1.00
   vision_rear_work_x_max: -0.55
+  # Real robot coordinate contract. Camera frames are timestamped with the
+  # host monotonic clock; rt/sportmodestate supplies odom->base_link poses.
+  # Visual mode refuses to start if either stream is stale or cannot be
+  # synchronized. IMU acceleration is deliberately not integrated here.
+  real_vision_pose_history_duration: 3.0
+  real_vision_maximum_sync_error: 0.15
+  real_vision_odometry_stale_timeout: 0.25
+  real_vision_trajectory_stale_timeout: 1.0
+  real_vision_minimum_path_length: 0.30
+  real_vision_yaw_command_limit: 0.15
   trajectory_file: "robot_lab/trajectories/test_gentle_s.csv"
   trajectory_relative_to_start: true
   trajectory_visual_point_count: 24
@@ -49,13 +62,14 @@ b2_z1_no_gun:
   trajectory_slowdown_distance: 1.20
   trajectory_minimum_approach_speed: 0.04
   trajectory_heading_gain: 1.00
-  # Correct lateral gait drift directly. Yaw-only feedback can leave B2
-  # parallel to the crack while its body translates away from the centreline.
-  # These bounds remain far inside the policy's trained lateral range.
-  vision_lateral_correction_gain: 0.80
-  vision_lateral_command_limit: 0.20
-  vision_lateral_filter_time_constant: 0.80
-  vision_lateral_command_rate_limit: 0.08
+  # Keep translational motion on the B2 forward axis. Cross-track error is
+  # converted into yaw below, avoiding crab walking with a non-zero body-y
+  # command. The remaining values are retained only for compatibility tests.
+  vision_enable_lateral_velocity_correction: false
+  vision_lateral_correction_gain: 0.35
+  vision_lateral_command_limit: 0.08
+  vision_lateral_filter_time_constant: 1.00
+  vision_lateral_command_rate_limit: 0.04
   # Begin correcting after the initial diagonal pair is established.  The
   # previous 8 s delay let B2 accumulate an unrecoverable parallel offset.
   vision_steering_delay: 1.20
@@ -90,6 +104,22 @@ b2_z1_no_gun:
                     0.80,  0.80, 1.00,  1.00, 0.00,
                    -1.50, -1.50, -1.50, -1.50, 2.55, -1.60,
                    -1.40,  0.00, 0.00]
+  # Physical GetUp/standing pose. Keep this independent from the asymmetric
+  # training default above: policy normalization must not be repurposed as a
+  # real stand controller. Leg entries match rl_sar's stock B2 stance.
+  deployment_stand_dof_pos: [0.00, 0.00, 0.00, 0.00,
+                             0.80, 0.80, 0.80, 0.80, 0.00,
+                            -1.50,-1.50,-1.50,-1.50, 1.05,-0.93,
+                            -0.82, 0.00, 0.00]
+  deployment_stand_max_joint_error: 0.15
+
+  # Z1 factory-style compact/home pose used while B2 is lying down. The long
+  # welding gun must not be installed in this pose: install it only after key
+  # 0 has made B2 upright and deployed Z1 to the work pose above. Z1 order is
+  # joint1..joint6.
+  deployment_lying_arm_dof_pos: [0.00, 0.00, 0.00, 0.00, 0.00, 0.00]
+  welding_gun_requires_upright_install: true
+  policy_standby_arm_pos: [0.00, 2.06, -1.59, -0.81, 0.03, 0.00]
 
   # Gazebo explicit-PD feed-forward offset. This compensates the measured
   # static sag while leaving the policy observation reference unchanged.

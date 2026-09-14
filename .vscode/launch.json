@@ -2,6 +2,17 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "部署 v4：MuJoCo 视觉+焊枪（model_10300）",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/run_b2_z1_v4.py",
+            "python": "/home/dong/anaconda3/envs/crack_vision/bin/python",
+            "args": ["--mode", "vision", "--display-vision"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
             "name": "部署：MuJoCo B2+Z1 轨迹跟随（调试）",
             "type": "cppdbg",
             "request": "launch",

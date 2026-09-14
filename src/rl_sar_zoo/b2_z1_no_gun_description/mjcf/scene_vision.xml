@@ -12,26 +12,25 @@
   <asset>
     <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0"
              width="512" height="3072"/>
-    <material name="road_surface" rgba="0.42 0.42 0.42 1"
-              reflectance="0.05" roughness="0.9"/>
+    <!-- The same map defines collision height and appearance, so the RGB and
+         depth cameras observe exactly one aligned physical crack. -->
+    <hfield name="cracked_ground" file="./vision_cracked_ground.png"
+            size="11.5 16.5 0.05 0.10"/>
+    <texture type="2d" name="cracked_ground_texture"
+             file="./vision_cracked_ground.png"/>
+    <material name="road_surface" texture="cracked_ground_texture"
+              texuniform="false" reflectance="0.05" roughness="0.9"/>
     <material name="crack_bottom" rgba="0.006 0.005 0.004 1"
               reflectance="0" roughness="1"/>
   </asset>
 
   <worldbody>
     <light pos="0 0 2.5" dir="0 0 -1" directional="true"/>
-    <!-- A single geometric trench along world +X. Two solid road slabs leave
-         an exact 2 cm opening at y=0; the dark collision floor is 5 cm below
-         the road surface. No texture line is used, so RGB and depth observe
-         the same physical crack and a second false line cannot appear. -->
-    <geom name="road_left_000" pos="17.5 1.005 -0.05" type="box"
-          size="22.5 0.995 0.05" material="road_surface"
-          friction="1.0 0.005 0.0001"/>
-    <geom name="road_right_000" pos="17.5 -1.005 -0.05" type="box"
-          size="22.5 0.995 0.05" material="road_surface"
-          friction="1.0 0.005 0.0001"/>
-    <geom name="floor" pos="17.5 0 -0.055" type="box"
-          size="22.5 0.01 0.005" material="crack_bottom"
+    <!-- Road bounds are x=[-3,20], y=[-3,30].  The crack runs straight along
+         +X to x=6, follows a radius-10 m 90-degree left arc, then continues
+         along +Y to y=27.  The black groove is a real 5 cm depression. -->
+    <geom name="floor" pos="8.5 13.5 -0.05" type="hfield"
+          hfield="cracked_ground" material="road_surface"
           friction="1.0 0.005 0.0001"/>
     <!-- Non-colliding trajectory visualization. Cyan points show the loaded
          path, the green point is the current policy EE target, and the red

@@ -1,0 +1,349 @@
+# Copyright (c) 2024-2025 Ziqi Fan
+# SPDX-License-Identifier: Apache-2.0
+
+b2_z1_no_gun/robot_lab:
+  model_name: "policy.pt"
+  # Exported from
+  # 2026-09-08_10-32-14_rear_vision_v2_2_repair_from9400/model_9600.pt.
+  # This is the checkpoint selected for the training-side vision_v3 release.
+  # The matching URDF rotates the complete Z1 installation 180 degrees and
+  # trains its TCP in the rear workspace while locomotion follows the forward
+  # crack tangent.
+  num_observations: 70
+  observations: ["velocity_commands", "target_commands", "base_ang_vel", "projected_gravity",
+                 "joint_pos_rel", "joint_vel_rel", "actions"]
+  observations_history: []
+  observations_history_priority: "time"
+  clip_obs: 100.0
+  # Isaac Lab ActionManager stores the actor input before the custom action
+  # term applies its EMA. Since mdp.last_action() is called without an
+  # action_name, model_9600 observes that unfiltered preceding actor output.
+  # Keep deployment's actuator filter out of this observation.
+  sync_applied_action_observation: false
+  use_raw_policy_action_observation: true
+  enable_leg_target_slew_filter: false
+  # This rear-vision checkpoint was trained with
+  # FilteredJointPositionAction(alpha=0.20). Deployment must reproduce this
+  # actuator path independently from the raw last-action observation above.
+  # Bypassing it (alpha=1.0) applies the actor's large transient raw action in
+  # one frame and drives the leg targets into the safety envelope.
+  action_filter_alpha: 0.20
+  # B2AMPRunnerCfg.clip_actions. This clamp occurs before the action term and
+  # therefore before both mdp.last_action and the alpha=0.20 EMA.
+  policy_input_clip: 5.0
+
+  # Add a second output-side filter only to the final Z1 joint targets. This
+  # suppresses visible arm chatter without adding more lag to the legs.
+  # The policy's training-side EMA filters all actions at 50 Hz, but the rear
+  # TCP still contains a visible gait-frequency component in MuJoCo. Apply a
+  # slower target filter only to Z1 in the 200 Hz actuator loop; leg timing is
+  # untouched.
+  enable_arm_target_filter: true
+  # Keep the previously verified target smoothing.  The startup handoff below
+  # removes the initial discontinuity, while this filter suppresses arm motion
+  # that would otherwise feed a periodic disturbance back into the base.
+  arm_target_filter_alpha: 0.02
+  arm_action_indices: [8, 13, 14, 15, 16, 17]
+  # Retain the previously stable Z1 action-space slew limit; the output-side
+  # filter handles residual high-frequency target motion.
+  arm_target_rate_limit: 0.0
+  # Real-robot fail-safe: switch to passive if any Z1 joint exceeds this.
+  arm_safety_velocity_limit: 2.50
+
+  # Steady Z1 pose produced by model_9600 for the nominal rear TCP target.
+  # Move to it during the 2 s key-1 standing handoff, before T starts the
+  # first trot diagonal. This separates arm/TCP relocation from gait onset.
+  policy_standby_arm_pos: [0.00, 2.18, -1.60, -0.90, 0.00, 0.00]
+
+  # model_9600 was fine-tuned explicitly from the nominal stationary pose and
+  # with repeated stand/start transitions. The old model_7999 required an AMP
+  # motion replay here, but retaining it would bypass the newly learned direct
+  # takeover and introduce another handoff transient.
+  enable_forward_gait_starter: false
+  forward_gait_starter_file: "b2_forward_gait_starter.csv"
+  # A gently curved crack begins with a small lateral/yaw correction.  Treat
+  # that as forward locomotion so vision mode does not bypass the AMP starter
+  # merely because either component is a little above the old 0.03 threshold.
+  gait_starter_turn_tolerance: 0.08
+  # Replay slightly slower than the 40 Hz capture to reduce the startup
+  # contact impulse while preserving the recorded gait phase.
+  forward_gait_starter_fps: 35.0
+  # Start inference shortly before the final recorded AMP frame so its action
+  # filter/history are populated when physical replay releases the joints.
+  gait_starter_policy_warmup: 0.40
+  # Begin physical replay from a symmetric support pose and recover the full
+  # recorded trot before policy inference starts.
+  gait_starter_replay_blend_duration: 0.75
+  # Do not reshape the AMP reference: policy state, previous action and the
+  # physical joint target must describe the same recorded gait phase.  The
+  # recorded rear thighs stay in [0.68, 0.95] rad and calves in
+  # [-1.73, -1.49] rad; the former 1.00/-1.50 clamp straightened the rear
+  # legs and handed the policy a severely nose-down state.
+  gait_starter_rear_thigh_min: -100.0
+  gait_starter_rear_calf_min: -100.0
+  # Keep the complete learned diagonal amplitude. Long-run diagnostics showed
+  # that only RL, rather than the complete RF+RL diagonal, is over-active.
+  rf_rl_action_scale: 1.00
+  rf_rl_action_scale_start: 0.20
+  rf_rl_action_scale_full: 0.30
+  # The fine-tune task now rewards diagonal timing symmetry directly. Keep all
+  # four legs at the training action scale instead of biasing the left-rear leg.
+  rear_left_action_scale: 1.00
+  rear_left_action_scale_start: 0.20
+  rear_left_action_scale_full: 0.30
+
+  # V2 already trained with actuator-gain randomization; do not add the
+  # asymmetric high-speed damping used by the old model_8300 workaround.
+  high_speed_damping_start: 0.28
+  high_speed_damping_full: 0.35
+  high_speed_leg_kd_add: 0.0
+  high_speed_rf_rl_kd_add: 0.0
+
+  # MuJoCo-only deployment envelope. The previous bounds clipped the learned
+  # trot on nearly every 0.3 m/s step (especially thigh=0.25 and calf=-0.70),
+  # producing a flattened/asymmetric swing. These limits remain comfortably
+  # inside the B2 URDF hard limits and are not intended for direct real use.
+  enable_leg_target_safety_envelope: true
+  leg_target_safety_lower: [-0.60, -0.60, -0.60, -0.60,
+                           -0.15, -0.15, -0.15, -0.15, -100.0,
+                           -2.30, -2.30, -2.30, -2.30,
+                           -100.0, -100.0, -100.0, -100.0, -100.0]
+  leg_target_safety_upper: [0.60, 0.60, 0.60, 0.60,
+                            1.60, 1.60, 1.60, 1.60, 100.0,
+                           -0.45, -0.45, -0.45, -0.45,
+                            100.0, 100.0, 100.0, 100.0, 100.0]
+
+  # Keep leg actions inside the physical joint envelope without clipping away
+  # the learned knee flexion. The previous +/-2.6 calf limit was repeatedly
+  # reached in normal trot and flattened the swing-foot trajectory.
+  clip_actions_lower: [-2.5, -2.5, -2.5, -2.5, -4.0,
+                       -4.0, -4.0, -4.0, -0.8, -3.6,
+                       -3.6, -3.6, -3.6, -1.5, -2.0,
+                       -2.0, -1.2, -1.0]
+  clip_actions_upper: [2.5, 2.5, 2.5, 2.5, 4.0,
+                       4.0, 4.0, 4.0, 0.8, 4.2,
+                       4.2, 4.2, 4.2, 1.5, 2.0,
+                       2.0, 1.2, 1.0]
+
+  # Match the nominal B2 stiffness used in training.  A lower-edge A/B test
+  # (128) let the gait-starter handoff reach 0.51 rad pitch and immediately
+  # trip the fall guard, so deployment must not compensate this in PD gains.
+  rl_kp: [160.0, 160.0, 160.0, 160.0, 160.0,
+          160.0, 160.0, 160.0, 160.0, 160.0,
+          160.0, 160.0, 160.0, 160.0, 160.0,
+          160.0, 160.0, 160.0]
+  # Keep B2 at its nominal damping. Use the upper edge of the training-domain
+  # Z1 damping range (5 * 1.4 = 7) to suppress residual physical arm ringing.
+  rl_kd: [5.0, 5.0, 5.0, 5.0, 5.0,
+          5.0, 5.0, 5.0, 7.0, 5.0,
+          5.0, 5.0, 5.0, 7.0, 7.0,
+          7.0, 7.0, 7.0]
+  fixed_kp: [200.0, 200.0, 200.0, 200.0,
+             200.0, 200.0, 200.0, 200.0, 60.0,
+             300.0, 300.0, 300.0, 300.0, 60.0,
+             60.0, 60.0, 60.0, 60.0]
+  fixed_kd: [3.0, 3.0, 3.0, 3.0,
+             3.0, 3.0, 3.0, 3.0, 1.0,
+             3.0, 3.0, 3.0, 3.0, 1.0,
+             1.0, 1.0, 1.0, 1.0]
+
+  num_of_dofs: 18
+  action_scale: [0.25, 0.25, 0.25, 0.25, 0.25,
+                 0.25, 0.25, 0.25, 0.25, 0.25,
+                 0.25, 0.25, 0.25, 0.25, 0.25,
+                 0.25, 0.25, 0.25]
+  wheel_indices: []
+
+  lin_vel_scale: 1.0
+  ang_vel_scale: 0.2
+  dof_pos_scale: 1.0
+  dof_vel_scale: 0.05
+  # base_velocity command observation order from Isaac Lab:
+  # [lin_vel_x, lin_vel_y, ang_vel_z].
+  # The policy supports the training limits x/y/yaw=[-1, 1]. Deployment keeps
+  # the existing conservative hardware clamps in rl_sim/rl_real.
+  # Training feeds generated base-velocity commands to the policy without an
+  # observation scale. Keep deployment commands 1:1 with the displayed values.
+  commands_scale: [1.0, 1.0, 1.0]
+  # Rate-limit the policy command instead of applying each 0.1 m/s keyboard
+  # step in a single inference frame. Limits are in command-units per second.
+  command_accel_limits: [0.18, 0.18, 0.30]
+  # Decelerate over complete gait cycles so the controller has time to place
+  # all four feet before the endpoint hold captures a support posture.
+  command_decel_limits: [0.12, 0.12, 0.30]
+  # Endpoint hold is accepted only in a normal upright support state. Knee,
+  # calf, or body contact is rejected independently by the MuJoCo contact test.
+  stop_min_base_height: 0.48
+  stop_max_body_tilt: 0.15
+  # Once autonomous motion has decelerated to an upright four-foot phase,
+  # leave locomotion and reuse the deployment-verified standing state.
+  return_to_getup_state_after_stop: true
+  # Long-duration MuJoCo A/B testing on model_13997 found a hard stability
+  # boundary: 0.30 stayed upright, while 0.35 developed a yaw impulse and
+  # tipped after about one minute. Keep the keyboard display unchanged, but
+  # cap this checkpoint at the highest verified continuous-walking command.
+  policy_command_limits: [0.30, 0.30, 0.45]
+  # Anchor straight walking to the yaw at gait start, matching the fixed
+  # world-frame centreline used by the training command generator.
+  # EEDerivedVelocityCommand multiplies heading error by
+  # speed/max_linear_speed. The runtime applies that same scaling.
+  # Keep manual W testing identical to the fixed Isaac command [vx, 0, 0].
+  # Trajectory following already supplies its own lateral/yaw commands.
+  # RearVisionTrajectoryCommand used during training keeps lateral velocity
+  # at zero and supplies path correction through yaw only. The legacy heading
+  # transform rotated forward velocity into an untrained lateral command as
+  # soon as the base yaw changed, amplifying the initial imbalance.
+  motion_heading_hold_gain: 0.0
+  motion_heading_hold_max_yaw_rate: 0.15
+  # Keep small operator requests in the gait starter's learned moving regime.
+  # Unlike the failed direct-start test, the policy reaches this command only
+  # after the robot and action history are already in a valid AMP gait phase.
+  minimum_policy_locomotion_speed: 0.20
+
+  # The starter CSV advances about 0.25 m/s. Seed inference with the matching
+  # command so the first learned target has the same gait phase and speed.
+  gait_starter_policy_command: [0.25, 0.00, 0.00]
+  target_commands_scale: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+  # ee_target command observation order from Isaac Lab:
+  # [pos_x, pos_y, pos_z, quat_w, quat_x, quat_y, quat_z].
+  # Couple target distance to the velocity observation exactly as the
+  # EEDerivedVelocityCommand used in training:
+  # distance = arrival_threshold * (1 + linear_speed / max_linear_speed).
+  derive_target_position_from_velocity: false
+  # RearVisionTrajectoryCommand already expresses both TCP position and its
+  # fixed tool orientation directly in the instantaneous B2 base frame.
+  level_target_commands: false
+  target_command_arrival_threshold: 0.70
+  # Deployment V2 was trained with x/y command limits of 0.6 m/s. Use the
+  # same inverse mapping from policy velocity to target distance.
+  target_command_max_linear_speed: 0.60
+  # Fallback rear pose; live vision replaces xyz at runtime. Orientation is
+  # RearVisionTrajectoryCommand rpy=(0, pi/2, pi), quaternion wxyz.
+  # Match RearVisionTrajectoryCommand during training exactly:
+  # synthetic_ground_z_b_m (-0.45 m) + tool_height_m (0.10 m) = -0.35 m.
+  # Lowering this observation to -0.45 m drives the coupled whole-body policy
+  # outside its learned arm/leg manifold and produces an intermittent gait.
+  # Correct any remaining physical TCP-height bias separately after the gait
+  # is established, or fine-tune the policy for the lower welding pose.
+  target_commands: [-0.775, 0.00, -0.35,
+                    0.0, -0.707107, 0.0, 0.707107]
+  # The selected checkpoint was trained from a world-fixed crack point.  Its
+  # complete xyz position was transformed into the instantaneous B2 base
+  # frame and clamped to the ranges below.  Reproduce that contract here;
+  # using a fixed base-frame z made the physical TCP height change whenever
+  # the MuJoCo base height, roll or pitch changed.
+  vision_policy_target_track_world_xyz: true
+  vision_tool_height_above_ground: 0.09
+  vision_ground_height_world: 0.0
+  vision_policy_target_x_range: [-1.00, -0.55]
+  vision_policy_target_y_limit: 0.15
+  vision_policy_target_z_range: [-0.38, -0.30]
+  vision_policy_target_filter_time_constant: 0.25
+  # Limit segmentation-point changes without suppressing the slow
+  # base-attitude compensation that the policy saw during training.
+  vision_policy_target_max_xyz_rate: [0.12, 0.20, 0.08]
+  vision_policy_target_max_lateral_rate: 0.20
+  # T is activated after the policy is already running with target_commands.
+  # Keep x/z continuous across that mid-episode switch. Starting from the
+  # measured TCP instead created a large target-observation jump and made B2
+  # squat backward, even though the visual TCP error became zero.
+  vision_policy_target_transition_time: 4.0
+  # Match the pure-pursuit controller used by RearVisionTrajectoryCommand
+  # during training.  The previous deployment followed only the path tangent,
+  # so a parallel lateral offset was never corrected and B2 could walk over
+  # or completely away from the crack.
+  # This policy's stable MuJoCo gait starts at 0.30 m/s; 0.25 m/s enters the
+  # weak low-speed gait that was observed to buckle during steering.
+  trajectory_cruise_speed: 0.30
+  # Use a nearer base target and a local metre-scale chord. Far image points
+  # remain cached for continuity but no longer dominate the current heading.
+  # Begin steering before the curve reaches the edge of the front camera.
+  # A 1.5 m look-ahead is still local relative to the 10 m test radius and
+  # keeps the requested yaw inside the policy's trained +/-0.15 rad/s range.
+  trajectory_base_lookahead: 1.50
+  vision_heading_chord_length: 1.20
+  # MuJoCo A/B telemetry showed that a 0.10 rad/s policy command produced
+  # only about 0.02--0.05 rad/s at the base. Increase the outer-loop request
+  # so the physical base heading, rather than only the commanded heading,
+  # converges to the crack tangent.
+  trajectory_heading_gain: 2.50
+  trajectory_cross_track_gain: 0.80
+  trajectory_cross_track_heading_limit: 0.12
+  trajectory_cross_track_ramp_time: 3.5
+  # Keep Cartesian residual IK disabled.  The policy now receives the same
+  # bounded world-to-base target used in training, so a second joint-space
+  # corrector would fight the learned whole-body action.
+  vision_policy_tcp_feedforward_compensation: [0.0, 0.0, 0.0]
+  # Keep this off for the current checkpoint: forcing the arm out of its
+  # learned manifold was verified to stop the otherwise stable trot.
+  enable_vision_tcp_residual_correction: false
+  vision_tcp_residual_vertical_only: true
+  vision_tcp_residual_gain: 2.00
+  vision_tcp_residual_damping: 0.08
+  vision_tcp_residual_max_joint_offset: 0.18
+  # Establish the diagonal trot first, then lower Z1 slowly.  Moving the arm
+  # during the gait-start handoff can rob this checkpoint of leg authority.
+  vision_tcp_residual_delay: 6.00
+  vision_tcp_residual_ramp_time: 8.00
+  # Match RearVisionTrajectoryCommand: locomotion uses vx+wz and keeps vy=0.
+  # Live segmentation can replace the local tangent every camera frame, so
+  # constrain and smooth yaw before it reaches the policy observation.
+  # Keep the cross-track controller, but feed it into the whole-body policy
+  # through the deployment-verified gentle yaw envelope.  Applying the full
+  # training command in one step can topple MuJoCo during the first diagonal.
+  vision_heading_command_limit: 0.30
+  vision_heading_filter_time_constant: 0.25
+  vision_heading_command_rate_limit: 0.30
+  # If both live perception and its validated cache expire, preserve the TCP
+  # target and remove locomotion commands with a zero-slope ramp instead of
+  # clearing all observations in one 20 ms policy step.
+  vision_loss_stop_duration: 2.50
+  # Keep body-y at zero so the commanded velocity vector stays aligned with
+  # B2's forward axis. Cross-track error is corrected by turning the base,
+  # which avoids the visible crab angle produced by direct lateral motion.
+  vision_enable_lateral_velocity_correction: false
+  vision_lateral_correction_gain: 0.35
+  vision_lateral_command_limit: 0.08
+  vision_lateral_filter_time_constant: 1.00
+  vision_lateral_command_rate_limit: 0.04
+  # Regulate the gait-averaged body lateral velocity to zero. This is a small
+  # deployment-bias correction, not a geometric sideways path command.
+  vision_enable_sideslip_compensation: false
+  vision_sideslip_filter_time_constant: 1.50
+  vision_sideslip_min_forward_speed: 0.12
+  vision_sideslip_compensation_gain: 1.00
+  vision_sideslip_command_limit: 0.030
+  vision_sideslip_command_rate_limit: 0.010
+  # Align the base forward axis with the gait-averaged direction of travel.
+  # Unlike a vy command this corrects the visible crab angle through yaw.
+  vision_enable_course_alignment: true
+  vision_course_alignment_min_forward_speed: 0.12
+  vision_course_alignment_gain: 1.50
+  vision_course_alignment_yaw_limit: 0.08
+  # The old 3 s delay allowed the open-loop gait bias to build 0.25--0.30 m
+  # lateral error before correction began. Start only after the 0.5 s leg
+  # handoff, then retain the slow yaw filter/rate limit for stability.
+  vision_steering_delay: 1.20
+  vision_steering_ramp_time: 4.0
+
+  torque_limits: [200.0, 200.0, 200.0, 200.0,
+                  200.0, 200.0, 200.0, 200.0, 120.0,
+                  320.0, 320.0, 320.0, 320.0, 120.0,
+                  120.0, 120.0, 120.0, 120.0]
+  default_dof_pos: [0.10, -0.10, 0.10, -0.10,
+                    0.80,  0.80, 1.00,  1.00, 0.00,
+                   -1.50, -1.50, -1.50, -1.50, 2.55, -1.60,
+                   -1.40,  0.00, 0.00]
+  # Deployment-only stand target; do not change default_dof_pos because the
+  # actor was normalized and trained around that asymmetric configuration.
+  deployment_stand_dof_pos: [0.00, 0.00, 0.00, 0.00,
+                             0.80, 0.80, 0.80, 0.80, 0.00,
+                            -1.50,-1.50,-1.50,-1.50, 2.18,-1.60,
+                            -0.90, 0.00, 0.00]
+  deployment_stand_max_joint_error: 0.12
+
+  # Keep policy/controller indexing identical. Real B2 DDS routing uses
+  # b2_dds_mapping from base.yaml; Z1 uses z1_policy_indices separately.
+  joint_mapping: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+  urdf_to_deploy: [0, 4, 9, 1, 5, 10, 2, 6, 11, 3, 7, 12, 8, 13, 14, 15, 16, 17]
+  deploy_to_urdf: [0, 3, 6, 9, 1, 4, 7, 10, 12, 2, 5, 8, 11, 13, 14, 15, 16, 17]

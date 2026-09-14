@@ -126,6 +126,9 @@ private:
     // 50 Hz policy loop.
     bool vision_trajectory_enabled = false;
     bool vision_trajectory_fresh = false;
+    bool vision_loss_stop_active = false;
+    double vision_loss_stop_start_time = -1.0;
+    std::array<float, 3> vision_loss_stop_start_control{{0.0f, 0.0f, 0.0f}};
     bool vision_rear_target_active = false;
     bool vision_policy_target_initialized = false;
     std::array<double, 3> vision_policy_target_b{{-0.775, 0.0, -0.35}};
@@ -134,6 +137,13 @@ private:
     double vision_heading_command = 0.0;
     bool vision_lateral_command_initialized = false;
     double vision_lateral_command = 0.0;
+    bool vision_course_estimator_initialized = false;
+    double vision_course_previous_time = -1.0;
+    double vision_course_previous_x = 0.0;
+    double vision_course_previous_y = 0.0;
+    double vision_filtered_world_vx = 0.0;
+    double vision_filtered_world_vy = 0.0;
+    double vision_course_alignment_error = 0.0;
     std::string vision_exchange_dir;
     double vision_state_export_period = 0.06;
     double vision_trajectory_stale_timeout = 0.40;

@@ -18,6 +18,46 @@
 namespace b2_z1_no_gun_fsm
 {
 
+inline std::vector<float> DeploymentStandPosition(RL &rl)
+{
+    auto stand = rl.params.Get<std::vector<float>>(
+        "deployment_stand_dof_pos", {});
+    if (stand.size() != static_cast<std::size_t>(
+            rl.params.Get<int>("num_of_dofs")))
+    {
+        stand = rl.params.Get<std::vector<float>>("default_dof_pos") +
+            rl.params.Get<std::vector<float>>("sim_dof_pos_offset");
+    }
+    return stand;
+}
+
+inline std::vector<float> DeploymentLyingArmPosition(RL &rl)
+{
+    auto arm = rl.params.Get<std::vector<float>>(
+        "deployment_lying_arm_dof_pos", {});
+    if (arm.size() != 6)
+    {
+        // Z1 compact/home pose. The welding gun must be physically removed
+        // before entering this prone transport configuration.
+        arm = {0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f};
+    }
+    return arm;
+}
+
+inline void SetArmPosition(std::vector<float> &position,
+                           const std::vector<float> &arm)
+{
+    static const std::vector<int> indices = {8, 13, 14, 15, 16, 17};
+    if (position.size() < 18 || arm.size() != indices.size())
+    {
+        return;
+    }
+    for (std::size_t joint = 0; joint < indices.size(); ++joint)
+    {
+        position[indices[joint]] = arm[joint];
+    }
+}
+
 class RLFSMStatePassive : public RLFSMState
 {
 public:
@@ -63,11 +103,13 @@ public:
 
     float percent_pre_getup = 0.0f;
     float percent_getup = 0.0f;
+    float percent_arm_deploy = 0.0f;
     int post_getup_hold_cycles = 0;
     int settle_window_cycles = 0;
     std::vector<float> settle_window_start_q;
     bool locomotion_requested = false;
     bool post_getup_hold_reported = false;
+    bool work_pose_reported = false;
     static constexpr int kMinimumPostGetUpHoldCycles = 200; // 1 s at 200 Hz
     static constexpr int kSettleWindowCycles = 100;         // 0.5 s
     static constexpr float kStableLegPositionDelta = 0.03f;
@@ -85,11 +127,13 @@ public:
     {
         percent_pre_getup = 0.0f;
         percent_getup = 0.0f;
+        percent_arm_deploy = 0.0f;
         post_getup_hold_cycles = 0;
         settle_window_cycles = 0;
         settle_window_start_q.clear();
         locomotion_requested = false;
         post_getup_hold_reported = false;
+        work_pose_reported = false;
         if (rl.fsm.previous_state_->GetStateName() == "RLFSMStatePassive")
         {
             stand_from_passive = true;
@@ -100,13 +144,12 @@ public:
         }
         rl.now_state = *fsm_state;
         rl.start_state = rl.now_state;
+        SetArmPosition(pre_running_pos, DeploymentLyingArmPosition(rl));
     }
 
     void Run() override
     {
-        const auto stand_pos =
-            rl.params.Get<std::vector<float>>("default_dof_pos") +
-            rl.params.Get<std::vector<float>>("sim_dof_pos_offset");
+        const auto stand_pos = DeploymentStandPosition(rl);
         if(stand_from_passive)
         {
 
@@ -114,7 +157,17 @@ public:
             {
                 return;
             }
-            if (Interpolate(percent_getup, pre_running_pos, stand_pos, 2.0f, "Getting up", true))
+            auto standing_folded_pos = stand_pos;
+            SetArmPosition(standing_folded_pos, DeploymentLyingArmPosition(rl));
+            if (Interpolate(percent_getup, pre_running_pos,
+                            standing_folded_pos, 2.0f,
+                            "Getting up with Z1 stowed", true))
+            {
+                return;
+            }
+            if (Interpolate(percent_arm_deploy, standing_folded_pos,
+                            stand_pos, 2.0f,
+                            "Deploying Z1 to welding work pose", true))
             {
                 return;
             }
@@ -125,6 +178,15 @@ public:
             {
                 return;
             }
+        }
+
+        if (!work_pose_reported)
+        {
+            work_pose_reported = true;
+            std::cout << std::endl << LOGGER::NOTE
+                      << "B2 is upright and Z1 is at the work pose. "
+                      << "Install and secure the welding gun now; do not "
+                      << "install it while B2/Z1 are prone." << std::endl;
         }
 
         // Interpolate stops writing once complete. Explicitly hold the final
@@ -141,12 +203,16 @@ public:
 
         ++post_getup_hold_cycles;
         float max_leg_velocity = 0.0f;
+        float max_leg_target_error = 0.0f;
         for (int i = 0; i < rl.params.Get<int>("num_of_dofs"); ++i)
         {
             if (!IsArmJoint(i))
             {
                 max_leg_velocity = std::max(
                     max_leg_velocity, std::fabs(fsm_state->motor_state.dq[i]));
+                max_leg_target_error = std::max(
+                    max_leg_target_error,
+                    std::fabs(fsm_state->motor_state.q[i] - stand_pos[i]));
             }
         }
         if (post_getup_hold_cycles >= kMinimumPostGetUpHoldCycles &&
@@ -171,13 +237,17 @@ public:
                     }
                 }
 
-                if (max_leg_position_delta <= kStableLegPositionDelta)
+                const float maximum_stand_error = rl.params.Get<float>(
+                    "deployment_stand_max_joint_error", 0.12f);
+                if (max_leg_position_delta <= kStableLegPositionDelta &&
+                    max_leg_target_error <= maximum_stand_error)
                 {
                     post_getup_hold_reported = true;
                     std::cout << std::endl << LOGGER::INFO
                               << "Post-getup settling completed; max_leg_dq="
                               << max_leg_velocity
                               << ", max_leg_q_delta=" << max_leg_position_delta
+                              << ", max_leg_target_error=" << max_leg_target_error
                               << ", policy handoff enabled" << std::endl;
                 }
                 else
@@ -186,6 +256,7 @@ public:
                               << "Post-getup settling: max_leg_dq="
                               << max_leg_velocity
                               << ", max_leg_q_delta=" << max_leg_position_delta
+                              << ", max_leg_target_error=" << max_leg_target_error
                               << std::endl;
                     settle_window_cycles = 0;
                 }
@@ -245,24 +316,38 @@ public:
     RLFSMStateGetDown(RL *rl) : RLFSMState(*rl, "RLFSMStateGetDown") {}
 
     float percent_getdown = 0.0f;
+    float percent_arm_stow = 0.0f;
+    std::vector<float> upright_stowed_target;
+    std::vector<float> getdown_target;
 
     void Enter() override
     {
         percent_getdown = 0.0f;
+        percent_arm_stow = 0.0f;
         rl.now_state = *fsm_state;
+        upright_stowed_target = rl.now_state.motor_state.q;
+        SetArmPosition(upright_stowed_target, DeploymentLyingArmPosition(rl));
+        // Preserve the B2 prone pose captured before GetUp, but always return
+        // Z1 to its explicit tool-safe storage default.
+        getdown_target = rl.start_state.motor_state.q;
+        SetArmPosition(getdown_target, DeploymentLyingArmPosition(rl));
+        std::cout << std::endl << LOGGER::NOTE
+                  << "Key 9 get-down: the welding gun must already be "
+                  << "physically removed. Stowing Z1 before lowering B2."
+                  << std::endl;
     }
 
     void Run() override
     {
-        Interpolate(percent_getdown, rl.now_state.motor_state.q, rl.start_state.motor_state.q, 2.0f, "Getting down", true);
-        for (int index : {8, 13, 14, 15, 16, 17})
+        if (Interpolate(percent_arm_stow, rl.now_state.motor_state.q,
+                        upright_stowed_target, 2.0f,
+                        "Stowing Z1 before lowering B2", true))
         {
-            fsm_command->motor_command.q[index] = fsm_state->motor_state.q[index];
-            fsm_command->motor_command.dq[index] = 0.0f;
-            fsm_command->motor_command.kp[index] = 0.0f;
-            fsm_command->motor_command.kd[index] = 1.0f;
-            fsm_command->motor_command.tau[index] = 0.0f;
+            return;
         }
+        Interpolate(percent_getdown, upright_stowed_target,
+                    getdown_target, 2.0f,
+                    "Getting down with Z1 stowed", true);
     }
 
     void Exit() override {}
@@ -318,6 +403,7 @@ public:
     std::vector<float> gait_handoff_offset_q;
     bool gait_handoff_offset_initialized = false;
     bool policy_frame_received_this_cycle = false;
+    bool getdown_requested = false;
     int handoff_hold_cycles = 0;
     int arm_blend_cycles = 0;
     static constexpr int kPolicyWarmupCycles = 400; // 2.0 s at 200 Hz
@@ -427,6 +513,7 @@ public:
         gait_handoff_offset_q.assign(standby_hold_q.size(), 0.0f);
         gait_handoff_offset_initialized = false;
         policy_frame_received_this_cycle = false;
+        getdown_requested = false;
         handoff_hold_cycles = kPolicyWarmupCycles;
         arm_blend_cycles = kArmBlendCycles;
         previous_leg_target_q = standby_hold_q;
@@ -471,9 +558,7 @@ public:
             // GetUp already commands this stance. Keep commanding that same
             // target during policy warmup instead of freezing the sagged
             // measured pose captured while the joints are still converging.
-            const auto stand_target =
-                rl.params.Get<std::vector<float>>("default_dof_pos") +
-                rl.params.Get<std::vector<float>>("sim_dof_pos_offset");
+            const auto stand_target = DeploymentStandPosition(rl);
             for (int index = 0;
                  index < rl.params.Get<int>("num_of_dofs"); ++index)
             {
@@ -838,9 +923,7 @@ public:
                 // forever lets the asymmetric foot geometry slowly pitch the
                 // base forward even though all feet touched at capture time.
                 stop_settle_start_q = fsm_state->motor_state.q;
-                const auto stand_target =
-                    rl.params.Get<std::vector<float>>("default_dof_pos") +
-                    rl.params.Get<std::vector<float>>("sim_dof_pos_offset");
+                const auto stand_target = DeploymentStandPosition(rl);
                 standby_hold_q = stand_target;
                 const int leg_indices[] = {
                     0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12};
@@ -950,6 +1033,13 @@ public:
                       << " policy_yaw:" << (rl.obs.commands.size() > 2 ? rl.obs.commands[2] : 0.0f)
                       << " body_vx:" << (rl.obs.lin_vel.empty() ? 0.0f : rl.obs.lin_vel[0])
                       << " body_vy:" << (rl.obs.lin_vel.size() > 1 ? rl.obs.lin_vel[1] : 0.0f)
+                      << " slip_deg:"
+                      << (rl.obs.lin_vel.size() > 1 &&
+                                  std::fabs(rl.obs.lin_vel[0]) > 0.03f
+                              ? std::atan2(
+                                    rl.obs.lin_vel[1], rl.obs.lin_vel[0]) *
+                                    57.2957795f
+                              : 0.0f)
                       << " base_h:" << rl.obs.base_height
                       << " feet:["
                       << (rl.obs.foot_contacts.size() > 0 ? rl.obs.foot_contacts[0] : 0)
@@ -1677,9 +1767,32 @@ public:
         {
             return "RLFSMStatePassive";
         }
-        else if (rl.control.current_keyboard == Input::Keyboard::Num9 || rl.control.current_gamepad == Input::Gamepad::B)
+        if (rl.control.current_keyboard == Input::Keyboard::Num9 ||
+            rl.control.current_gamepad == Input::Gamepad::B)
         {
-            return "RLFSMStateGetDown";
+            if (!getdown_requested)
+            {
+                std::cout << std::endl << LOGGER::NOTE
+                          << "Key 9 requested: remove the welding gun now; "
+                          << "waiting for a smooth upright four-foot stop "
+                          << "before get-down." << std::endl;
+            }
+            getdown_requested = true;
+            rl.control.x = 0.0f;
+            rl.control.y = 0.0f;
+            rl.control.yaw = 0.0f;
+        }
+        if (getdown_requested)
+        {
+            const bool policy_stopped = !policy_running && !gait_starter_active;
+            const bool handoff_finished = handoff_hold_cycles <= 0;
+            const bool support_settled =
+                !captured_support_hold_active || stop_settle_cycles <= 0;
+            if (policy_stopped && handoff_finished && support_settled)
+            {
+                return "RLFSMStateGetDown";
+            }
+            return state_name_;
         }
         else if (rl.control.current_keyboard == Input::Keyboard::Num0 || rl.control.current_gamepad == Input::Gamepad::A)
         {

@@ -2,12 +2,24 @@
 set -euo pipefail
 
 repo_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-exchange_dir="/tmp/b2_z1_mujoco_vision"
+exchange_dir="${RL_SAR_VISION_EXCHANGE_DIR:-/tmp/b2_z1_mujoco_vision_${$}}"
+export RL_SAR_VISION_EXCHANGE_DIR="${exchange_dir}"
+lock_file="/tmp/b2_z1_mujoco_vision.lock"
 vision_python="/home/dong/anaconda3/envs/crack_vision/bin/python"
 vision_script="${repo_dir}/scripts/run_mujoco_rhacracknet_bridge.py"
 scene_file="${repo_dir}/src/rl_sar_zoo/b2_z1_no_gun_description/mjcf/scene_vision.xml"
 checkpoint="/home/dong/RHACrackNet/code/exps/rhanet_dep_CamCrack789_b2_stage1/ckpt/best_ckpt.pth"
 controller_log="${exchange_dir}/controller.log"
+
+# Both the simulator and vision bridge exchange live state through fixed file
+# names below. A second launcher would interleave two simulations in those
+# files and make the robot consume poses/paths from the wrong world.
+exec 9>"${lock_file}"
+if ! flock -n 9; then
+  echo "Another B2-Z1 vision simulation is already running." >&2
+  echo "Close its MuJoCo window or stop that launcher before starting a new one." >&2
+  exit 1
+fi
 
 for required in "${vision_python}" "${vision_script}" "${scene_file}" "${checkpoint}"; do
   if [[ ! -e "${required}" ]]; then
@@ -37,6 +49,11 @@ echo "Starting rear-Z1 RHACrackNet MuJoCo bridge..."
 echo "Front RGB-D guides B2; the 180-degree rear Z1 tracks cached crack points behind the base."
 echo "Controls: press 0 and wait for GetUp to settle; press 1 to enter the policy, then press T for visual trajectory tracking. Space stops."
 echo "Controller diagnostics will be saved to ${controller_log}"
+echo "Isolated vision exchange directory: ${exchange_dir}"
+# The simulated road is a known z=0 plane.  A 2 cm groove becomes sub-pixel
+# in far-field depth, so use RGB segmentation for its centreline and lift the
+# projected path onto that plane.  The MuJoCo collision trench remains 5 cm
+# deep; this affects only the path reconstruction supplied to the controller.
 MUJOCO_GL=egl "${vision_python}" -u "${vision_script}" \
   --exchange-dir "${exchange_dir}" \
   --scene "${scene_file}" \
@@ -44,10 +61,13 @@ MUJOCO_GL=egl "${vision_python}" -u "${vision_script}" \
   --checkpoint "${checkpoint}" \
   --device cuda:0 \
   --segmentation-mode hybrid \
-  --physical-crack-surface-z 0.0 \
-  --physical-crack-min-depth 0.02 \
-  --physical-crack-max-depth 0.08 \
+  --dark-threshold 130 \
+  --ignore-bottom-rows 50 \
+  --path-ground-z 0.0 \
   --path-height-offset 0.005 \
+  --minimum-path-length 0.35 \
+  --minimum-path-span 0.30 \
+  --cache-hold-seconds 12.0 \
   --display \
   --save-overlay &
 vision_pid=$!
