@@ -1,0 +1,1 @@
+<mujoco model="b2_z1_v4_flat"><include file="b2.xml" /><worldbody><light pos="0 0 3" castshadow="false" ambient="0.6 0.6 0.6" /><geom name="floor" type="plane" size="100 100 0.1" rgba="0.42 0.42 0.42 1" friction="1.0 0.005 0.0001" /></worldbody></mujoco>

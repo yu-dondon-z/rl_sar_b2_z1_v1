@@ -1,0 +1,6 @@
+[submodule "src/rl_sar/library/thirdparty/z1_sdk"]
+	path = src/rl_sar/library/thirdparty/z1_sdk
+	url = https://github.com/unitreerobotics/z1_sdk.git
+[submodule "src/rl_sar_zoo"]
+	path = src/rl_sar_zoo
+	url = https://github.com/fan-ziqi/rl_sar_zoo.git

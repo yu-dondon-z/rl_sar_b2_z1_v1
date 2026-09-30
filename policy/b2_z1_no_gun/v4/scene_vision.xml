@@ -1,0 +1,55 @@
+<mujoco model="b2 z1 visual crack trajectory scene">
+  <include file="b2.xml" />
+
+  <statistic center="0 0 0.35" extent="1.8" />
+
+  <visual>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0" />
+    <rgba haze="0.15 0.25 0.35 1" />
+    <global azimuth="-130" elevation="-20" />
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="3072" />
+    
+    <!-- Short deployment test road: x=-2..14 m, y=-1.5..1.5 m. -->
+    <hfield name="cracked_ground" file="cracked_ground.png" size="8 1.5 0.05 0.10" />
+    <texture type="2d" name="cracked_ground_texture" file="cracked_ground.png" />
+    <material name="road_surface" texture="cracked_ground_texture" texuniform="false" reflectance="0.05" roughness="0.9" />
+    <material name="crack_bottom" rgba="0.006 0.005 0.004 1" reflectance="0" roughness="1" />
+  </asset>
+
+  <worldbody>
+    <light pos="0 0 2.5" dir="0 0 -1" directional="true" castshadow="false" diffuse="0.35 0.35 0.35" ambient="0.65 0.65 0.65" />
+    
+    <geom name="floor" pos="6 0 -0.05" type="hfield" hfield="cracked_ground" material="road_surface" friction="1.0 0.005 0.0001" />
+    
+    <body name="trajectory_target_visual" mocap="true" pos="0 0 -10">
+      <geom type="sphere" size="0.035" rgba="0.1 1 0.2 0.9" contype="0" conaffinity="0" group="2" />
+    </body>
+    <body name="trajectory_path_visual_00" mocap="true" pos="0 0 -10"><geom type="sphere" size="0.014" rgba="0.1 0.9 1 0.85" contype="0" conaffinity="0" group="2" /></body>
+    <body name="trajectory_path_visual_01" mocap="true" pos="0 0 -10"><geom type="sphere" size="0.014" rgba="0.1 0.9 1 0.85" contype="0" conaffinity="0" group="2" /></body>
+    <body name="trajectory_path_visual_02" mocap="true" pos="0 0 -10"><geom type="sphere" size="0.014" rgba="0.1 0.9 1 0.85" contype="0" conaffinity="0" group="2" /></body>
+    <body name="trajectory_path_visual_03" mocap="true" pos="0 0 -10"><geom type="sphere" size="0.014" rgba="0.1 0.9 1 0.85" contype="0" conaffinity="0" group="2" /></body>
+    <body name="trajectory_path_visual_04" mocap="true" pos="0 0 -10"><geom type="sphere" size="0.014" rgba="0.1 0.9 1 0.85" contype="0" conaffinity="0" group="2" /></body>
+    <body name="trajectory_path_visual_05" mocap="true" pos="0 0 -10"><geom type="sphere" size="0.014" rgba="0.1 0.9 1 0.85" contype="0" conaffinity="0" group="2" /></body>
+    <body name="trajectory_path_visual_06" mocap="true" pos="0 0 -10"><geom type="sphere" size="0.014" rgba="0.1 0.9 1 0.85" contype="0" conaffinity="0" group="2" /></body>
+    <body name="trajectory_path_visual_07" mocap="true" pos="0 0 -10"><geom type="sphere" size="0.014" rgba="0.1 0.9 1 0.85" contype="0" conaffinity="0" group="2" /></body>
+    <body name="trajectory_path_visual_08" mocap="true" pos="0 0 -10"><geom type="sphere" size="0.014" rgba="0.1 0.9 1 0.85" contype="0" conaffinity="0" group="2" /></body>
+    <body name="trajectory_path_visual_09" mocap="true" pos="0 0 -10"><geom type="sphere" size="0.014" rgba="0.1 0.9 1 0.85" contype="0" conaffinity="0" group="2" /></body>
+    <body name="trajectory_path_visual_10" mocap="true" pos="0 0 -10"><geom type="sphere" size="0.014" rgba="0.1 0.9 1 0.85" contype="0" conaffinity="0" group="2" /></body>
+    <body name="trajectory_path_visual_11" mocap="true" pos="0 0 -10"><geom type="sphere" size="0.014" rgba="0.1 0.9 1 0.85" contype="0" conaffinity="0" group="2" /></body>
+    <body name="trajectory_path_visual_12" mocap="true" pos="0 0 -10"><geom type="sphere" size="0.014" rgba="0.1 0.9 1 0.85" contype="0" conaffinity="0" group="2" /></body>
+    <body name="trajectory_path_visual_13" mocap="true" pos="0 0 -10"><geom type="sphere" size="0.014" rgba="0.1 0.9 1 0.85" contype="0" conaffinity="0" group="2" /></body>
+    <body name="trajectory_path_visual_14" mocap="true" pos="0 0 -10"><geom type="sphere" size="0.014" rgba="0.1 0.9 1 0.85" contype="0" conaffinity="0" group="2" /></body>
+    <body name="trajectory_path_visual_15" mocap="true" pos="0 0 -10"><geom type="sphere" size="0.014" rgba="0.1 0.9 1 0.85" contype="0" conaffinity="0" group="2" /></body>
+    <body name="trajectory_path_visual_16" mocap="true" pos="0 0 -10"><geom type="sphere" size="0.014" rgba="0.1 0.9 1 0.85" contype="0" conaffinity="0" group="2" /></body>
+    <body name="trajectory_path_visual_17" mocap="true" pos="0 0 -10"><geom type="sphere" size="0.014" rgba="0.1 0.9 1 0.85" contype="0" conaffinity="0" group="2" /></body>
+    <body name="trajectory_path_visual_18" mocap="true" pos="0 0 -10"><geom type="sphere" size="0.014" rgba="0.1 0.9 1 0.85" contype="0" conaffinity="0" group="2" /></body>
+    <body name="trajectory_path_visual_19" mocap="true" pos="0 0 -10"><geom type="sphere" size="0.014" rgba="0.1 0.9 1 0.85" contype="0" conaffinity="0" group="2" /></body>
+    <body name="trajectory_path_visual_20" mocap="true" pos="0 0 -10"><geom type="sphere" size="0.014" rgba="0.1 0.9 1 0.85" contype="0" conaffinity="0" group="2" /></body>
+    <body name="trajectory_path_visual_21" mocap="true" pos="0 0 -10"><geom type="sphere" size="0.014" rgba="0.1 0.9 1 0.85" contype="0" conaffinity="0" group="2" /></body>
+    <body name="trajectory_path_visual_22" mocap="true" pos="0 0 -10"><geom type="sphere" size="0.014" rgba="0.1 0.9 1 0.85" contype="0" conaffinity="0" group="2" /></body>
+    <body name="trajectory_path_visual_23" mocap="true" pos="0 0 -10"><geom type="sphere" size="0.014" rgba="0.1 0.9 1 0.85" contype="0" conaffinity="0" group="2" /></body>
+  </worldbody>
+</mujoco>

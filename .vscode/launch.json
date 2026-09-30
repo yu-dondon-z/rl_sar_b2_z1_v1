@@ -1,0 +1,157 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "部署 VA15：MuJoCo 裂缝视觉（model_5000）",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/run_b2_z1_v4.py",
+            "python": "/home/dong/anaconda3/envs/crack_vision/bin/python",
+            "args": ["--profile", "${workspaceFolder}/policy/b2_z1_no_gun/VA15", "--mode", "vision", "--display-vision", "--speed", "0.22"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "subProcess": false,
+            "env": {"MUJOCO_GL": "egl", "PYTHONUNBUFFERED": "1"}
+        },
+        {
+            "name": "部署 VA15：MuJoCo 本体行走（model_5000）",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/run_b2_z1_v4.py",
+            "python": "/home/dong/anaconda3/envs/crack_vision/bin/python",
+            "args": ["--profile", "${workspaceFolder}/policy/b2_z1_no_gun/VA15", "--mode", "walk", "--speed", "0.22"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "subProcess": false,
+            "env": {"PYTHONUNBUFFERED": "1"}
+        },
+        {
+            "name": "部署 V19：MuJoCo 完整视觉轨迹（model_11449）",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/run_b2_z1_v4.py",
+            "python": "/home/dong/anaconda3/envs/crack_vision/bin/python",
+            "args": [
+                "--profile",
+                "${workspaceFolder}/policy/b2_z1_no_gun/v19_contact_cycle",
+                "--mode",
+                "vision",
+                "--display-vision",
+                "--speed",
+                "0.25"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "MUJOCO_GL": "egl",
+                "PYTHONUNBUFFERED": "1"
+            }
+        },
+        {
+            "name": "部署 V19：MuJoCo 纯本体直行（model_11449）",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/run_b2_z1_v4.py",
+            "python": "/home/dong/anaconda3/envs/crack_vision/bin/python",
+            "args": [
+                "--profile",
+                "${workspaceFolder}/policy/b2_z1_no_gun/v19_contact_cycle",
+                "--mode",
+                "walk",
+                "--speed",
+                "0.25"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONUNBUFFERED": "1"
+            }
+        },
+        {
+            "name": "部署 v4：MuJoCo 视觉+焊枪（model_10300）",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/run_b2_z1_v4.py",
+            "python": "/home/dong/anaconda3/envs/crack_vision/bin/python",
+            "args": ["--mode", "vision", "--display-vision"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "name": "部署：MuJoCo B2+Z1 轨迹跟随（调试）",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake_build/bin/rl_sim_mujoco",
+            "args": [
+                "b2_z1_no_gun",
+                "scene_flat"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "setupCommands": [
+                {
+                    "description": "启用 GDB 美化输出",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "构建 B2-Z1 MuJoCo 部署"
+        },
+        {
+            "name": "部署：MuJoCo B2+Z1 无枪（调试）",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake_build/bin/rl_sim_mujoco",
+            "args": [
+                "b2_z1_no_gun",
+                "scene_flat"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "setupCommands": [
+                {
+                    "description": "启用 GDB 美化输出",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "构建 B2-Z1 MuJoCo 部署"
+        },
+        {
+            "name": "部署：后向机械臂视觉裂缝轨迹 v3（调试）",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake_build/bin/rl_sim_mujoco",
+            "args": [
+                "b2_z1_no_gun",
+                "scene_vision"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "setupCommands": [
+                {
+                    "description": "启用 GDB 美化输出",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "启动 RHACrackNet MuJoCo 视觉桥",
+            "postDebugTask": "停止 RHACrackNet MuJoCo 视觉桥"
+        }
+    ]
+}
