@@ -1,0 +1,30 @@
+{
+  "strategy": "VD5 Startup",
+  "checkpoint": "/home/dong/b2_z1_VD2/logs/rsl_rl/b2_z1_vd5_startup_amp/2026-11-10_11-47-57_vd5_startup_80ref_20stand_continue1000/model_4498.pt",
+  "checkpoint_sha256": "9af8e2ca67382d3186bb9ea145930c25797b06e6189963bb1d996fee91f3fedf",
+  "checkpoint_iteration": 4498,
+  "training_experiment": "b2_z1_vd5_startup_amp",
+  "policy_file": "policy.pt",
+  "policy_sha256": "989895d8077841855b1aa6791aca24e3cf3eb4a7457bb3d902eec19fc6494075",
+  "actor_architecture": [
+    70,
+    512,
+    256,
+    128,
+    18
+  ],
+  "activation": "ELU",
+  "observation_normalizer": false,
+  "observation_terms": [
+    "base_velocity[3]",
+    "tcp_target_in_base_wxyz[7]",
+    "base_angular_velocity*0.2[3]",
+    "projected_gravity[3]",
+    "joint_position_relative[18]",
+    "joint_velocity*0.05[18]",
+    "previous_raw_action[18]"
+  ],
+  "action_scale": 0.25,
+  "source_torch": "2.7.0+cu128",
+  "trace_probe_max_abs_error": 0.0
+}

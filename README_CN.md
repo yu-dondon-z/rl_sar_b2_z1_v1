@@ -1,5 +1,13 @@
 # rl_sar
 
+B2+Z1 本地工作区入口：[文档索引](docs/README.md)、[脚本索引](scripts/README.md)、
+[板载编译与运行](deployment/vd2_real/README_板载编译与运行.md)。
+
+2026-11-16：当前为VD14最终5999（75cm夹持点），两端动作回放完成30秒，姿态明显改善；双视觉修正传感器时间对齐、暗缝证据和四元数翻号后，曲线／直线均完成30秒、挥杆减轻。目标仍主要为有界估计，未完成验收发布；旧失败记录保留。
+[Play／MuJoCo命令与实际结果](docs/reports/vd14/VD14_PLAY_MUJOCO_20261116.md)；旧VD13及VD12记录保留。
+后视支持不足已改为零行走等待／恢复，60秒样本完成、8次等待均恢复，不等于全程视觉有效。训练源码、最终模型与部署代码的配套关系见 [VD14 GitHub快照](docs/VD14_GITHUB_SYNC_20261116.md)。
+旧版说明见[历史归档](docs/archive/README.md)。默认actor、板载包和机器人未改动，下面的上游说明不代表当前B2+Z1已通过部署。
+
 [![Ubuntu 20.04/22.04](https://img.shields.io/badge/Ubuntu-20.04/22.04-blue.svg?logo=ubuntu)](https://ubuntu.com/)
 [![macOS](https://img.shields.io/badge/macOS-Experimental-orange.svg?logo=apple)](https://www.apple.com/macos/)
 [![ROS Noetic](https://img.shields.io/badge/ros-noetic-brightgreen.svg?logo=ros)](https://wiki.ros.org/noetic)

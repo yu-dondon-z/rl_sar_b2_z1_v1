@@ -1,0 +1,195 @@
+# VA15 model_5000; isolated from archived robot_lab.
+# 70D policy observation, 18 actions, raw last_action and separate alpha=0.2 EMA.
+# Legacy actuator envelopes and startup gains are retained for baseline review.
+
+b2_z1_no_gun/VA15:
+  model_name: "policy.pt"
+  num_observations: 70
+  observations: ["velocity_commands", "target_commands", "base_ang_vel", "projected_gravity",
+                 "joint_pos_rel", "joint_vel_rel", "actions"]
+  observations_history: []
+  observations_history_priority: "time"
+  clip_obs: 100.0
+  sync_applied_action_observation: false
+  use_raw_policy_action_observation: true
+  enable_leg_target_slew_filter: false
+  action_filter_alpha: 0.20
+  policy_input_clip: 5.0
+
+  enable_arm_target_filter: true
+  arm_target_filter_alpha: 0.02
+  arm_action_indices: [8, 13, 14, 15, 16, 17]
+  arm_target_rate_limit: 0.0
+  arm_safety_velocity_limit: 2.50
+
+  policy_standby_arm_pos: [0.00, 2.18, -1.60, -0.90, 0.00, 0.00]
+
+  enable_forward_gait_starter: false
+  forward_gait_starter_file: "b2_forward_gait_starter.csv"
+  gait_starter_turn_tolerance: 0.08
+  forward_gait_starter_fps: 35.0
+  gait_starter_policy_warmup: 0.40
+  gait_starter_replay_blend_duration: 0.75
+  gait_starter_rear_thigh_min: -100.0
+  gait_starter_rear_calf_min: -100.0
+  rf_rl_action_scale: 1.00
+  rf_rl_action_scale_start: 0.20
+  rf_rl_action_scale_full: 0.30
+  rear_left_action_scale: 1.00
+  rear_left_action_scale_start: 0.20
+  rear_left_action_scale_full: 0.30
+
+  high_speed_damping_start: 0.28
+  high_speed_damping_full: 0.35
+  high_speed_leg_kd_add: 0.0
+  high_speed_rf_rl_kd_add: 0.0
+
+  enable_leg_target_safety_envelope: true
+  leg_target_safety_lower: [-0.60, -0.60, -0.60, -0.60,
+                           -0.15, -0.15, -0.15, -0.15, -100.0,
+                           -2.30, -2.30, -2.30, -2.30,
+                           -100.0, -100.0, -100.0, -100.0, -100.0]
+  leg_target_safety_upper: [0.60, 0.60, 0.60, 0.60,
+                            1.60, 1.60, 1.60, 1.60, 100.0,
+                           -0.45, -0.45, -0.45, -0.45,
+                            100.0, 100.0, 100.0, 100.0, 100.0]
+
+  clip_actions_lower: [-2.5, -2.5, -2.5, -2.5, -4.0,
+                       -4.0, -4.0, -4.0, -0.8, -3.6,
+                       -3.6, -3.6, -3.6, -1.5, -2.0,
+                       -2.0, -1.2, -1.0]
+  clip_actions_upper: [2.5, 2.5, 2.5, 2.5, 4.0,
+                       4.0, 4.0, 4.0, 0.8, 4.2,
+                       4.2, 4.2, 4.2, 1.5, 2.0,
+                       2.0, 1.2, 1.0]
+
+  rl_kp: [160.0, 160.0, 160.0, 160.0, 160.0,
+          160.0, 160.0, 160.0, 160.0, 160.0,
+          160.0, 160.0, 160.0, 160.0, 160.0,
+          160.0, 160.0, 160.0]
+  rl_kd: [5.0, 5.0, 5.0, 5.0, 5.0,
+          5.0, 5.0, 5.0, 7.0, 5.0,
+          5.0, 5.0, 5.0, 7.0, 7.0,
+          7.0, 7.0, 7.0]
+  fixed_kp: [200.0, 200.0, 200.0, 200.0,
+             200.0, 200.0, 200.0, 200.0, 60.0,
+             300.0, 300.0, 300.0, 300.0, 60.0,
+             60.0, 60.0, 60.0, 60.0]
+  fixed_kd: [3.0, 3.0, 3.0, 3.0,
+             3.0, 3.0, 3.0, 3.0, 1.0,
+             3.0, 3.0, 3.0, 3.0, 1.0,
+             1.0, 1.0, 1.0, 1.0]
+
+  deployment_stand_kp: [450.0, 450.0, 450.0, 450.0,
+                        450.0, 450.0, 450.0, 450.0, 60.0,
+                        675.0, 675.0, 675.0, 675.0, 60.0,
+                        60.0, 60.0, 60.0, 60.0]
+  deployment_stand_kd: [15.0, 15.0, 15.0, 15.0,
+                        15.0, 15.0, 15.0, 15.0, 1.0,
+                        15.0, 15.0, 15.0, 15.0, 1.0,
+                        1.0, 1.0, 1.0, 1.0]
+  deployment_stand_gain_ramp_s: 2.0
+
+  num_of_dofs: 18
+  action_scale: [0.25, 0.25, 0.25, 0.25, 0.25,
+                 0.25, 0.25, 0.25, 0.25, 0.25,
+                 0.25, 0.25, 0.25, 0.25, 0.25,
+                 0.25, 0.25, 0.25]
+  wheel_indices: []
+
+  lin_vel_scale: 1.0
+  ang_vel_scale: 0.2
+  dof_pos_scale: 1.0
+  dof_vel_scale: 0.05
+  commands_scale: [1.0, 1.0, 1.0]
+  command_accel_limits: [0.18, 0.18, 0.30]
+  command_decel_limits: [0.12, 0.12, 0.30]
+  stop_min_base_height: 0.48
+  stop_max_body_tilt: 0.15
+  # Fail closed until a CURRENT B2 calibration and low-level-mode sport
+  # feedback trace have been checked. Do not copy archived polarity/thresholds.
+  # A/B static tests remain available, but manual/visual walking is blocked.
+  real_foot_contact_calibration_validated: false
+  real_foot_contact_calibration_id: ""
+  real_stop_sport_feedback_validated: false
+  real_stop_sport_validation_id: ""
+  real_kinematics_shadow_only: true
+  real_kinematics_model_file: "b2_leg_kinematics.json"
+  return_to_getup_state_after_stop: true
+  policy_command_limits: [0.30, 0.30, 0.45]
+  motion_heading_hold_gain: 0.0
+  motion_heading_hold_max_yaw_rate: 0.15
+  minimum_policy_locomotion_speed: 0.0
+
+  gait_starter_policy_command: [0.25, 0.00, 0.00]
+  target_commands_scale: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+  derive_target_position_from_velocity: false
+  level_target_commands: false
+  target_command_arrival_threshold: 0.70
+  target_command_max_linear_speed: 0.60
+  target_commands: [-0.775, 0.00, -0.35,
+                    0.0, -0.707107, 0.0, 0.707107]
+  vision_policy_target_track_world_xyz: true
+  vision_tool_height_above_ground: 0.09
+  vision_ground_height_world: 0.0
+  vision_policy_target_x_range: [-1.00, -0.55]
+  vision_policy_target_y_limit: 0.15
+  vision_policy_target_z_range: [-0.38, -0.30]
+  vision_policy_target_filter_time_constant: 0.25
+  vision_policy_target_max_xyz_rate: [0.12, 0.20, 0.08]
+  vision_policy_target_max_lateral_rate: 0.20
+  vision_policy_target_transition_time: 4.0
+  trajectory_cruise_speed: 0.30
+  trajectory_base_lookahead: 1.50
+  vision_heading_chord_length: 1.20
+  trajectory_heading_gain: 2.50
+  trajectory_cross_track_gain: 0.80
+  trajectory_cross_track_heading_limit: 0.12
+  trajectory_cross_track_ramp_time: 3.5
+  vision_policy_tcp_feedforward_compensation: [0.0, 0.0, 0.0]
+  enable_vision_tcp_residual_correction: false
+  vision_tcp_residual_vertical_only: true
+  vision_tcp_residual_gain: 2.00
+  vision_tcp_residual_damping: 0.08
+  vision_tcp_residual_max_joint_offset: 0.18
+  vision_tcp_residual_delay: 6.00
+  vision_tcp_residual_ramp_time: 8.00
+  vision_heading_command_limit: 0.30
+  vision_heading_filter_time_constant: 0.25
+  vision_heading_command_rate_limit: 0.30
+  vision_loss_stop_duration: 2.50
+  vision_enable_lateral_velocity_correction: false
+  vision_lateral_correction_gain: 0.35
+  vision_lateral_command_limit: 0.08
+  vision_lateral_filter_time_constant: 1.00
+  vision_lateral_command_rate_limit: 0.04
+  vision_enable_sideslip_compensation: false
+  vision_sideslip_filter_time_constant: 1.50
+  vision_sideslip_min_forward_speed: 0.12
+  vision_sideslip_compensation_gain: 1.00
+  vision_sideslip_command_limit: 0.030
+  vision_sideslip_command_rate_limit: 0.010
+  vision_enable_course_alignment: true
+  vision_course_alignment_min_forward_speed: 0.12
+  vision_course_alignment_gain: 1.50
+  vision_course_alignment_yaw_limit: 0.08
+  vision_steering_delay: 1.20
+  vision_steering_ramp_time: 4.0
+
+  torque_limits: [200.0, 200.0, 200.0, 200.0,
+                  200.0, 200.0, 200.0, 200.0, 120.0,
+                  320.0, 320.0, 320.0, 320.0, 120.0,
+                  120.0, 120.0, 120.0, 120.0]
+  default_dof_pos: [0.10, -0.10, 0.10, -0.10,
+                    0.80,  0.80, 1.00,  1.00, 0.00,
+                   -1.50, -1.50, -1.50, -1.50, 2.55, -1.60,
+                   -1.40,  0.00, 0.00]
+  deployment_stand_dof_pos: [0.00, 0.00, 0.00, 0.00,
+                             0.80, 0.80, 0.80, 0.80, 0.00,
+                            -1.50,-1.50,-1.50,-1.50, 2.18,-1.60,
+                            -0.90, 0.00, 0.00]
+  deployment_stand_max_joint_error: 0.12
+
+  joint_mapping: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+  urdf_to_deploy: [0, 4, 9, 1, 5, 10, 2, 6, 11, 3, 7, 12, 8, 13, 14, 15, 16, 17]
+  deploy_to_urdf: [0, 3, 6, 9, 1, 4, 7, 10, 12, 2, 5, 8, 11, 13, 14, 15, 16, 17]

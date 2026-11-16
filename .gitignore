@@ -14,6 +14,8 @@ Cargo.lock
 
 # Python
 __pycache__
+.pytest_cache/
+*.py[cod]
 
 # IDE
 .vscode
@@ -33,6 +35,28 @@ MUJOCO_LOG.TXT
 # Data
 .cache
 *.json
+!/docs/maintenance/organization_20261112.json
+
+# Generated experiment outputs; retain patch source and validation documents.
+/outputs/
+/patches/**/outputs/
+/patches/**/board_results/
+/patches/**/build*/
+/patches/**/*.log
+# Keep historical source, not captured frames, telemetry or duplicated models.
+/patches/**/*.png
+/patches/**/*.jpg
+/patches/**/*.csv
+/patches/**/*.pt
+
+# Checked-in runtime/test contracts, not generated experiment JSON.
+!/scripts/fixtures/*.json
+!/tests/fixtures/*.json
+!/scripts/vision/SOURCE.json
+!/scripts/vision/rhacracknet/SOURCE.json
+!/policy/b2_z1_no_gun/mujoco_vd3_mirror_2000/provenance.json
+!/policy/b2_z1_no_gun/mujoco_vd5_startup_4498/manifest.json
+!/policy/vision/rhanet_dep_camcrack789_b2_stage1/manifest.json
 
 # temp
 *.zip

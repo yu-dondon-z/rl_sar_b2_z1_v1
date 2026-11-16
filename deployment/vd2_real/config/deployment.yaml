@@ -1,0 +1,17 @@
+package_version: VD2
+policy_identity: VD3_leg_mirror_model_2000
+actor_sha256: 51eda90b2b77204ef66d949523486250e88c7062aeb1e86f0dc5478924291c78
+forward_speed_mps: 0.20
+policy_period_s: 0.02
+z1_controller_ip: 127.0.0.1
+z1_to_port: 8071
+z1_own_port: 8072
+# Raw SDK K_P/K_W; retain the previous real deployment values.
+z1_gain_origin: existing_sdk_raw_gains_not_simulation_stiffness
+visual_tcp_feedback: false
+tool_target_mode: rear_seam_direct
+front_path_estimation: true
+# Flat-floor model parameter, copied from MuJoCo; not a measured height signal.
+# Verify standing base-origin height on this robot. Rear depth does not set it.
+front_nominal_base_height_m: 0.55
+front_base_height_quality: nominal_model_assumption_not_field_calibrated

@@ -1,0 +1,14 @@
+calibrated: true
+camera_name: rear_d435i
+serial: ""
+# Optical camera (x right, y down, z forward) -> B2 base (x forward,y left,z up).
+# Provisional installation transform supplied in rear_camera.json on 2026-11-05.
+# The source document describes this as an approximate mount estimate; verify
+# against a checkerboard/known seam before treating TCP accuracy as calibrated.
+calibration_quality: provisional_installation_estimate
+source: rear_camera.json
+T_base_camera:
+  - [0.0, 0.770435, -0.637519, -0.434510]
+  - [1.0, 0.0, 0.0, 0.0]
+  - [0.0, -0.637519, -0.770435, 0.026751]
+  - [0.0, 0.0, 0.0, 1.0]

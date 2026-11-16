@@ -1,0 +1,16 @@
+{
+  "name": "VD3 leg mirror model_2000",
+  "scope": "local MuJoCo simulation",
+  "checkpoint": "/home/dong/b2_z1_VD2/logs/rsl_rl/b2_z1_vd3_curve_amp/2026-11-05_09-57-36_vd3_leg_mirror_from_10500/model_2000.pt",
+  "checkpoint_sha256": "987cdcfddd11d9220457c8658264fef8e24ef1225e97866b50844c26c73d9173",
+  "reviewed_export": "/home/dong/rl_sar_b2_z1/outputs/VD3_MIRROR_REVIEW_20261105/policy_mirror_2000.pt",
+  "policy_sha256": "51eda90b2b77204ef66d949523486250e88c7062aeb1e86f0dc5478924291c78",
+  "actor_observations": 70,
+  "actor_actions": 18,
+  "critic_used": false,
+  "export_equivalence_verified": true,
+  "review": "/home/dong/rl_sar_b2_z1/outputs/VD3_MIRROR_REVIEW_20261105/final_review.md",
+  "previous_default": "/home/dong/rl_sar_b2_z1/outputs/VD3_SUPPORT_REVIEW_20261104/compare_10500_12500/policy_10500.pt",
+  "previous_default_sha256": "f45e42e506e407fbba0ba77e7d3ab78f4f09564a7d349ae92f7a62d6900e68dd",
+  "hardware_deployed": false
+}

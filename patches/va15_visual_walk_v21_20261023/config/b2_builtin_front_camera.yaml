@@ -1,0 +1,29 @@
+# B2 built-in front optical camera calibration.
+# Values must come from the specific robot; the B2 SDK identifies the service
+# as FrontVideoClient and does not identify it as an Intel RealSense device.
+# Intrinsics estimated on 2026-09-15 from 18 unique 1920x1080 images using
+# a 9x6-inner-corner checkerboard with 25 mm squares (RMS 0.444299 px).
+# T_base_camera was then estimated from the same board laid on the floor at
+# center, left and right locations with a measured base height of 0.55 m
+# (combined external-calibration RMS 0.611825 px).
+calibrated: true
+camera_name: b2_builtin_front
+intrinsics:
+  fx: 756.700
+  fy: 752.123
+  cx: 934.705
+  cy: 510.684
+  # OpenCV Brown-Conrady order: [k1, k2, p1, p2, k3].
+  distortion: [0.04969600, -0.03070179, -0.00359919, -0.00590063, -0.04031327]
+# Camera optical frame (x right, y down, z forward) -> B2 base_link
+T_base_camera:
+  - [0.00651959, -0.02434965, 0.99968224, 0.44643878]
+  - [-0.99983166, -0.01730499, 0.00609906, -0.00569431]
+  - [0.01715098, -0.99955372, -0.02445837, -0.00031663]
+  - [0.0, 0.0, 0.0, 1.0]
+# Local road-plane fallback n dot p_base + offset = 0. Replace the offset by
+# measured base height. This is used because FrontVideoClient returns JPEG RGB
+# but the checked-in B2 SDK exposes no synchronized depth-image API.
+road_plane_base:
+  normal: [0.0, 0.0, 1.0]
+  offset: 0.55

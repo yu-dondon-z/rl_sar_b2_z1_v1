@@ -1,0 +1,1630 @@
+{
+  "date": "2026-11-12",
+  "project": "rl_sar_b2_z1",
+  "purpose": "Organize documentation and standalone diagnostics; preserve runtime sources, patches, checkpoints and results.",
+  "moves": [
+    {
+      "from": "docs/B2_MOTION_READINESS_20261021.md",
+      "to": "docs/archive/va15/B2_MOTION_READINESS_20261021.md",
+      "kind": "historical_record",
+      "sha256_before": "22cef10fd64e1e3e86186bcdace2f978530bba9b68ae73950294125cba3b0d03",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/HANDOFF_VA15_ACCOUNT_SWITCH_20261027.md",
+      "to": "docs/archive/va15/HANDOFF_VA15_ACCOUNT_SWITCH_20261027.md",
+      "kind": "historical_record",
+      "sha256_before": "d89e66eb6d343819d05a6de2125e459046fa87d0788654aa1be2503ebe6aee02",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/HANDOFF_VA15_REAL_V252_20261027.md",
+      "to": "docs/archive/va15/HANDOFF_VA15_REAL_V252_20261027.md",
+      "kind": "historical_record",
+      "sha256_before": "cd6499911c5850ee3f7803b5aa2e3194c58fd18472aeb844da468f759caa37c1",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/HANDOFF_VA15_V256_REVIEW_20261029.md",
+      "to": "docs/archive/va15/HANDOFF_VA15_V256_REVIEW_20261029.md",
+      "kind": "historical_record",
+      "sha256_before": "bdbd0cecff87529d109b10486cc78fc52b797ef298d7375aef2f8b5b7b43ca1d",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/HANDOFF_VA15_V257_PRECISION_20261029.md",
+      "to": "docs/archive/va15/HANDOFF_VA15_V257_PRECISION_20261029.md",
+      "kind": "historical_record",
+      "sha256_before": "63bc2e82ea1d7cb952b968167a4831250c7961bb22a2b813f56a1055c28ce835",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/HANDOFF_VA15_VISUAL_TCP_20261029.md",
+      "to": "docs/archive/va15/HANDOFF_VA15_VISUAL_TCP_20261029.md",
+      "kind": "historical_record",
+      "sha256_before": "90151f51cf263bb5fcc4528d473f3510315c9683536319dd14e1a031e070ed44",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VA15_FOUR_RUN_STOP_TRACKING_20261029.md",
+      "to": "docs/archive/va15/VA15_FOUR_RUN_STOP_TRACKING_20261029.md",
+      "kind": "historical_record",
+      "sha256_before": "81846dfe2dd84b029a3bc265a2eb5aea61f05070bc8e0764928c4dc2681e9415",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VA15_REAL_RESTART_20261020.md",
+      "to": "docs/archive/va15/VA15_REAL_RESTART_20261020.md",
+      "kind": "historical_record",
+      "sha256_before": "1dcfde516328bbf568c5c87f166bf0359834bed7c6f8f84c2788840d1c6adb8e",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VA15_REAL_SUPPORT_DIAGNOSIS_20261020.md",
+      "to": "docs/archive/va15/VA15_REAL_SUPPORT_DIAGNOSIS_20261020.md",
+      "kind": "historical_record",
+      "sha256_before": "269d01fdc4364b9b50dccbed049af2a8338f49387354411135ee322ae98430a5",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VA15_V252_OFFLINE_TAKEOVER_20261027.md",
+      "to": "docs/archive/va15/VA15_V252_OFFLINE_TAKEOVER_20261027.md",
+      "kind": "historical_record",
+      "sha256_before": "53fcebe62854dd23303745bf0276032eeff663ef07744bb2c2253487429572c1",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VA15_V253_PROGRESS_20261027.md",
+      "to": "docs/archive/va15/VA15_V253_PROGRESS_20261027.md",
+      "kind": "historical_record",
+      "sha256_before": "e703e0c44b946e151ed7e032ca1c45fc36fdd68940eed56bedd65298350ebba1",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VA15_V254_REPAIR_20261027.md",
+      "to": "docs/archive/va15/VA15_V254_REPAIR_20261027.md",
+      "kind": "historical_record",
+      "sha256_before": "2a0869d5209c64c086b26d9508cb974dc6cae31317ff31464bc68fa45c82c776",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VA15_V255_SDK_OWNER_20261028.md",
+      "to": "docs/archive/va15/VA15_V255_SDK_OWNER_20261028.md",
+      "kind": "historical_record",
+      "sha256_before": "59969465bc7cbbb64e592f71e53c4eabc4de15238564b4332484972f131971a4",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VA15_V256_BOARD_SYNC_20261029.md",
+      "to": "docs/archive/va15/VA15_V256_BOARD_SYNC_20261029.md",
+      "kind": "historical_record",
+      "sha256_before": "5901e79527679fe631eabccf7411399c665b3bbb267af34b1fb71a1cf16c9a47",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD1_BASE_RESPONSE_DIAGNOSIS_20261103.md",
+      "to": "docs/archive/vd1/VD1_BASE_RESPONSE_DIAGNOSIS_20261103.md",
+      "kind": "historical_record",
+      "sha256_before": "83bdc6437da384c2a5a86fafe33556ef8eaec63fb3e99d4d5a37cf6f30b70172",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD1_DUAL_VISION_CONTROL_LOGIC_20261103.txt",
+      "to": "docs/archive/vd1/VD1_DUAL_VISION_CONTROL_LOGIC_20261103.txt",
+      "kind": "historical_record",
+      "sha256_before": "6ff97967583dfce6226eee9fea121cc31fdc2cf70b3a7c94d89fb7a6bc202326",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD1_DUAL_VISION_CONTROL_LOGIC_20261103_原文对应版.txt",
+      "to": "docs/archive/vd1/VD1_DUAL_VISION_CONTROL_LOGIC_20261103_原文对应版.txt",
+      "kind": "historical_record",
+      "sha256_before": "51c972dcebfd164b567b31da0256369f23248c3d6f83852d877518b7c194ae91",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD1_ISAAC_MASS_INERTIA_AUDIT_20261103.md",
+      "to": "docs/archive/vd1/VD1_ISAAC_MASS_INERTIA_AUDIT_20261103.md",
+      "kind": "historical_record",
+      "sha256_before": "64a7a42eaff56033d5623afac1f9d116343a7742a045cfd1b4d4cc5b49a207c9",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD1_SEAM_ONLY_DEBUG_20261103.md",
+      "to": "docs/archive/vd1/VD1_SEAM_ONLY_DEBUG_20261103.md",
+      "kind": "historical_record",
+      "sha256_before": "d530fcc45fd689666e47293f0aea903a021467ea9831396396882dbb942f9996",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD1_STABILITY_FIX_20261103.md",
+      "to": "docs/archive/vd1/VD1_STABILITY_FIX_20261103.md",
+      "kind": "historical_record",
+      "sha256_before": "d4aa2b95fa0a12b74db76c99414f78b9146b1787cd2a0a9223193f62e1fbe19d",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD1_VISION_COMMAND_DIAGNOSIS_20261103.md",
+      "to": "docs/archive/vd1/VD1_VISION_COMMAND_DIAGNOSIS_20261103.md",
+      "kind": "historical_record",
+      "sha256_before": "1077e2fb4c384b9b637b32ecae0fad392ab6ab3d567bab5e60e110e449b8c156",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD2_ARM_HANDOVER_DEPLOY_20261107.md",
+      "to": "docs/archive/vd2/VD2_ARM_HANDOVER_DEPLOY_20261107.md",
+      "kind": "historical_record",
+      "sha256_before": "4b5826c2ad224e6dedf668bb902f5259ac4b59dfe1411a31950ef14f484285a6",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD2_CAMERA_PAIR_RECOVERY_SYNC_20261109.md",
+      "to": "docs/archive/vd2/VD2_CAMERA_PAIR_RECOVERY_SYNC_20261109.md",
+      "kind": "historical_record",
+      "sha256_before": "eb0888e995e8c9b14c717d8d005e4c48b3a5ccea912329ba8fbc56dbc21bed7c",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD2_CAPTURE_SESSION_FIX_20261106.md",
+      "to": "docs/archive/vd2/VD2_CAPTURE_SESSION_FIX_20261106.md",
+      "kind": "historical_record",
+      "sha256_before": "9b29887c23876eba8c24d7c55f08f86e2637a78afae22fdd29400d30f05424d6",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD2_COMMAND_REFERENCE_FIX_20261106.md",
+      "to": "docs/archive/vd2/VD2_COMMAND_REFERENCE_FIX_20261106.md",
+      "kind": "historical_record",
+      "sha256_before": "115e228e97c7aefab0b6f348002b2f0eabb267963108b0bbc95e50c854d0d595",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD2_D435I_CAMERA_FIX_20261105.md",
+      "to": "docs/archive/vd2/VD2_D435I_CAMERA_FIX_20261105.md",
+      "kind": "historical_record",
+      "sha256_before": "6471b157ed0e8c61b86dd36c6ff77eb8540001b90dfeb50db653761612661a7d",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD2_FRONT_PATH_BOARD_SYNC_20261106.md",
+      "to": "docs/archive/vd2/VD2_FRONT_PATH_BOARD_SYNC_20261106.md",
+      "kind": "historical_record",
+      "sha256_before": "aa8aa475be9b7ed656fb384ff9d7c30311f9d063cbc1e148c9573c48043c2c8a",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD2_FRONT_START_FAILURE_AND_BOARD_FIX_20261106.md",
+      "to": "docs/archive/vd2/VD2_FRONT_START_FAILURE_AND_BOARD_FIX_20261106.md",
+      "kind": "historical_record",
+      "sha256_before": "196aa5e84d082edba59c9f19fd0a5f38032048586c10fb43cf4e22225b120cdc",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD2_FRONT_STRAIGHT_START_20261107.md",
+      "to": "docs/archive/vd2/VD2_FRONT_STRAIGHT_START_20261107.md",
+      "kind": "historical_record",
+      "sha256_before": "27039dbcb53c5ab265c5f38c015b33dc6e70b87306e0f6614fd6f4150f45e073",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD2_FRONT_VISIBLE_SUPPORT_20261109.md",
+      "to": "docs/archive/vd2/VD2_FRONT_VISIBLE_SUPPORT_20261109.md",
+      "kind": "historical_record",
+      "sha256_before": "603e512662cdd168c383c45b6a699069bec5b42396795bf44f675a20f09f9df0",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD2_GUI_VISIBILITY_FIX_20261107.md",
+      "to": "docs/archive/vd2/VD2_GUI_VISIBILITY_FIX_20261107.md",
+      "kind": "historical_record",
+      "sha256_before": "6e4e181a4da892cde56d84a1d5405a28b4ac8bb722a0c0921cb6886b20877b6b",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD2_INDEPENDENT_VISION_BOARD_SYNC_20261109.md",
+      "to": "docs/archive/vd2/VD2_INDEPENDENT_VISION_BOARD_SYNC_20261109.md",
+      "kind": "historical_record",
+      "sha256_before": "c99d67c2aebcbf7b002f6e3c7faf12cc40af4bbf2d0b1f371ae2ff9a07d86f46",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD2_LEGACY_GETUP_20261106.md",
+      "to": "docs/archive/vd2/VD2_LEGACY_GETUP_20261106.md",
+      "kind": "historical_record",
+      "sha256_before": "a19e8407e6e83df21b9b2f7cb1ca7659926c5b657c87d138be37e8e7d0bd8119",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD2_LOG_REVIEW_20261106_164440.md",
+      "to": "docs/archive/vd2/VD2_LOG_REVIEW_20261106_164440.md",
+      "kind": "historical_record",
+      "sha256_before": "be813ef57acb3cfc1fd12e2986af2a353eb1c852fb17af087f030b4d01b4e212",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD2_ONE_TERMINAL_DEPLOY_20261106.md",
+      "to": "docs/archive/vd2/VD2_ONE_TERMINAL_DEPLOY_20261106.md",
+      "kind": "historical_record",
+      "sha256_before": "74f143c0a45ee2bf6a8ea3fb16cb927ff68eecb323c622eb67c8fb3a9676072e",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD2_READY_EVIDENCE_20261107.md",
+      "to": "docs/archive/vd2/VD2_READY_EVIDENCE_20261107.md",
+      "kind": "historical_record",
+      "sha256_before": "f4616732ce8980a76e994afd5ff056a15478f837da1842b31f79110c4d5a9c10",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD2_REAL_BOARD_PACKAGE_20261105.md",
+      "to": "docs/archive/vd2/VD2_REAL_BOARD_PACKAGE_20261105.md",
+      "kind": "historical_record",
+      "sha256_before": "f98e8ea056e0a62d8835138f47c6d81e1c105fb2b2aeffcf5acc63847ac9de33",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD2_REAL_DEPLOY_READY_20261105.md",
+      "to": "docs/archive/vd2/VD2_REAL_DEPLOY_READY_20261105.md",
+      "kind": "historical_record",
+      "sha256_before": "4e2c137198f9ac44266f2f1a5a21bfcb7ac86e3b70f98b1aae5c65483e155168",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD2_REAL_VISION_DEADLINE_20261106.md",
+      "to": "docs/archive/vd2/VD2_REAL_VISION_DEADLINE_20261106.md",
+      "kind": "historical_record",
+      "sha256_before": "55a746b329fe31d37c8a219bfc4c74ba1a99d1ef7c8682ad9d801d0b400cca8a",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD2_REAL_VISION_REALTIME_20261106.md",
+      "to": "docs/archive/vd2/VD2_REAL_VISION_REALTIME_20261106.md",
+      "kind": "historical_record",
+      "sha256_before": "2aaa51e5de5ab7cad672f5b9f9176f0ff4f4320c08d5cc2907c8a34845200e10",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD2_REAR_164_DIAGNOSIS_20261107.md",
+      "to": "docs/archive/vd2/VD2_REAR_164_DIAGNOSIS_20261107.md",
+      "kind": "historical_record",
+      "sha256_before": "17076067043b26743dc0e4be737a7d2a0b1b248c729d22bd89f3b36da4462ef4",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD2_REAR_CONTINUITY_FIX_20261107.md",
+      "to": "docs/archive/vd2/VD2_REAR_CONTINUITY_FIX_20261107.md",
+      "kind": "historical_record",
+      "sha256_before": "4c4a0e9f02ac62f977b9c805a3343d696ca87371c0d3908845f312467ca49045",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD2_REAR_OBSERVED_FIX_20261106.md",
+      "to": "docs/archive/vd2/VD2_REAR_OBSERVED_FIX_20261106.md",
+      "kind": "historical_record",
+      "sha256_before": "34a4ae7881ae1fa23051c17af21eb4c45f6c27cf15aa0c5980e6940908208219",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD2_REAR_RGB_TOPOLOGY_20261107.md",
+      "to": "docs/archive/vd2/VD2_REAR_RGB_TOPOLOGY_20261107.md",
+      "kind": "historical_record",
+      "sha256_before": "c344a59819fa7ce1bc4904cf347712991b00ed0457f73f9a1a04c5efd910508f",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD2_REAR_TOPOLOGY_BOARD_SYNC_20261109.md",
+      "to": "docs/archive/vd2/VD2_REAR_TOPOLOGY_BOARD_SYNC_20261109.md",
+      "kind": "historical_record",
+      "sha256_before": "29ad8a866b8cd5f2ed4a2731c835e107f1bac4aacb069fb5120bbb1748aebe4d",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD2_REAR_WORKSPACE_DEPLOY_20261107.md",
+      "to": "docs/archive/vd2/VD2_REAR_WORKSPACE_DEPLOY_20261107.md",
+      "kind": "historical_record",
+      "sha256_before": "6e7f252ce3bc3d59ebe0754e13e45914024dfc5d7fb43efb4f88ebdb2ce2904e",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD2_REAR_Z1_FAILURE_20261106_154518.md",
+      "to": "docs/archive/vd2/VD2_REAR_Z1_FAILURE_20261106_154518.md",
+      "kind": "historical_record",
+      "sha256_before": "a7806724cb00503167722f9e77c51ed1707671de29e82d477cb6c2b67ca40337",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD2_VISUAL_WINDOWS_DEPLOY_20261107.md",
+      "to": "docs/archive/vd2/VD2_VISUAL_WINDOWS_DEPLOY_20261107.md",
+      "kind": "historical_record",
+      "sha256_before": "05a403476d7dabc3b263759caea7cfbc5b08658a87198c3261013322a0840d50",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD2_Z1_TRACKING_FAILURE_20261107_133738.md",
+      "to": "docs/archive/vd2/VD2_Z1_TRACKING_FAILURE_20261107_133738.md",
+      "kind": "historical_record",
+      "sha256_before": "a8fa529515601b048fdbb7fb0cedb6391792f998f8eab69c7a6fabcbd86f3077",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD3_FRONT_PATH_MUJOCO_20261106.md",
+      "to": "docs/archive/vd3/VD3_FRONT_PATH_MUJOCO_20261106.md",
+      "kind": "historical_record",
+      "sha256_before": "25d47d3315544a19891d4a7924697fed58434844fa58ebdd1d42891a85c74b2e",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD3_MIRROR_2000_MUJOCO_DEBUG_20261105.md",
+      "to": "docs/archive/vd3/VD3_MIRROR_2000_MUJOCO_DEBUG_20261105.md",
+      "kind": "historical_record",
+      "sha256_before": "4d1b8e4fefd496d7193821892a30e29e82728f346f4fd2965de50db501751a70",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD3_MUJOCO_DEPLOYMENT_20261104.md",
+      "to": "docs/archive/vd3/VD3_MUJOCO_DEPLOYMENT_20261104.md",
+      "kind": "historical_record",
+      "sha256_before": "5778b9e4256413711e29760425a00cadcda1e42f52db11e15b950e5c708dffdc",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD5_GAIT_DIAGNOSIS_20261111.md",
+      "to": "docs/reports/vd5/VD5_GAIT_DIAGNOSIS_20261111.md",
+      "kind": "evaluation_report",
+      "sha256_before": "fd2b0995a1c2d1c118df7437eb9fc2f8e5470a41203177d5db9871769d09a94f",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD5_REAR_PREVIEW_20261111.md",
+      "to": "docs/reports/vd5/VD5_REAR_PREVIEW_20261111.md",
+      "kind": "evaluation_report",
+      "sha256_before": "ea0ee8d3250f55046b5410482e73faea3e320fe7954d0215854230dee130673c",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD5_REAR_STABILITY_20261111.md",
+      "to": "docs/reports/vd5/VD5_REAR_STABILITY_20261111.md",
+      "kind": "evaluation_report",
+      "sha256_before": "a46a4749c2deb01e1ad3b32e5398a82d579f6c0d49610a342f19a7ef6208d17b",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD5_WORK_DISTANCE_20261111.md",
+      "to": "docs/reports/vd5/VD5_WORK_DISTANCE_20261111.md",
+      "kind": "evaluation_report",
+      "sha256_before": "b15222371957da1c60674d0ac47c892c5fe112f9992e627dda8736c3e5bee5d4",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD6_ACTOR_FEEDBACK_20261111.md",
+      "to": "docs/reports/vd6/VD6_ACTOR_FEEDBACK_20261111.md",
+      "kind": "evaluation_report",
+      "sha256_before": "c19473e15ce78307bbd33d446e3a08a8c2da61a7438c9cab7ea907cc89f25587",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD6_ACTUATOR_DIAGNOSIS_20261111.md",
+      "to": "docs/reports/vd6/VD6_ACTUATOR_DIAGNOSIS_20261111.md",
+      "kind": "evaluation_report",
+      "sha256_before": "3761a6599b87e3162530431ac3587a543551296f957bf9b2e051c6041f8f9458",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD6_ROLL_PULSE_REVIEW_20261111.md",
+      "to": "docs/reports/vd6/VD6_ROLL_PULSE_REVIEW_20261111.md",
+      "kind": "evaluation_report",
+      "sha256_before": "be522c7a38483f5d032acfc495ca8f3898b0f3d08b648d7524f7476de94c9a5a",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD7_SHORT_TRAINING_REVIEW_20261111.md",
+      "to": "docs/reports/vd7/VD7_SHORT_TRAINING_REVIEW_20261111.md",
+      "kind": "evaluation_report",
+      "sha256_before": "d6fbb4485feb6153db8f0d3859077e75b9ee1bb8b3dcf2e4f66ff860b0628757",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD8_ROLL_LANDING_REVIEW_20261111.md",
+      "to": "docs/reports/vd8/VD8_ROLL_LANDING_REVIEW_20261111.md",
+      "kind": "evaluation_report",
+      "sha256_before": "c8b35bf67058d9534f1bc125a7a4bc4dc42dfa994397a06c67d986fc7fd7999f",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD9_TRAINING_REVIEW_20261112.md",
+      "to": "docs/reports/vd9/VD9_TRAINING_REVIEW_20261112.md",
+      "kind": "evaluation_report",
+      "sha256_before": "b1449198c8080dbb7117bc366c25ce8fea4767bca8c6bf61f3162a836e721bd3",
+      "mode_before": "664"
+    },
+    {
+      "from": "docs/VD9_WARM_START_500_REVIEW_20261112.md",
+      "to": "docs/reports/vd9/VD9_WARM_START_500_REVIEW_20261112.md",
+      "kind": "evaluation_report",
+      "sha256_before": "773d0b199ecb6e9c925bb6ad2b7faf267b45f71a5e3a9d31757cfc8bf28887d6",
+      "mode_before": "664"
+    },
+    {
+      "from": "B2_Z1_RELEASE.md",
+      "to": "docs/archive/va15/B2_Z1_RELEASE.md",
+      "kind": "historical_release_note",
+      "sha256_before": "868852874e975580fd4a3db46e57250a0b8c89b77f7b869e332778d359397acd",
+      "mode_before": "664"
+    },
+    {
+      "from": "scripts/analyze_vd5_work_distance.py",
+      "to": "scripts/diagnostics/analyze_vd5_work_distance.py",
+      "kind": "diagnostic_script",
+      "sha256_before": "ea19a7e7eaf3a44baf2c0f33791461c1ca3cb56793369841909cbbf3ecc318ac",
+      "mode_before": "664"
+    },
+    {
+      "from": "scripts/analyze_vd6_actor_feedback.py",
+      "to": "scripts/diagnostics/analyze_vd6_actor_feedback.py",
+      "kind": "diagnostic_script",
+      "sha256_before": "d6ac94085734d02dab229cb1b272d5d3d4909521df8980e49e7edad51fe8b8c4",
+      "mode_before": "664"
+    },
+    {
+      "from": "scripts/analyze_vd6_joint_oscillation.py",
+      "to": "scripts/diagnostics/analyze_vd6_joint_oscillation.py",
+      "kind": "diagnostic_script",
+      "sha256_before": "72c83bced9da227389fbad2f5cf53f7724c444bd5066f76d9fc35b348912375c",
+      "mode_before": "664"
+    },
+    {
+      "from": "scripts/analyze_vd6_joint_response.py",
+      "to": "scripts/diagnostics/analyze_vd6_joint_response.py",
+      "kind": "diagnostic_script",
+      "sha256_before": "e8edd8470c2201135b5f5393ea9cf6bc6ae84ed870d4ec13985dbd7ce906d207",
+      "mode_before": "664"
+    },
+    {
+      "from": "scripts/analyze_vd6_roll_pulse.py",
+      "to": "scripts/diagnostics/analyze_vd6_roll_pulse.py",
+      "kind": "diagnostic_script",
+      "sha256_before": "a277f2216577e9d7c483ae276822c65fefed32819bf49340415935adf54a6cce",
+      "mode_before": "664"
+    },
+    {
+      "from": "scripts/plot_vd5_gait_compare.py",
+      "to": "scripts/diagnostics/plot_vd5_gait_compare.py",
+      "kind": "diagnostic_script",
+      "sha256_before": "9c40744b144574d307efc326de5efa0c3d70f5316004efb00858ee32e9c3128d",
+      "mode_before": "664"
+    },
+    {
+      "from": "scripts/probe_vd6_effort_readback.py",
+      "to": "scripts/diagnostics/probe_vd6_effort_readback.py",
+      "kind": "diagnostic_script",
+      "sha256_before": "ebe7c5dada58a99de7b26f725831e0a804abebaf8962383707ce10b88da44be5",
+      "mode_before": "664"
+    },
+    {
+      "from": "scripts/replay_vd6_fixed_arm.py",
+      "to": "scripts/diagnostics/replay_vd6_fixed_arm.py",
+      "kind": "diagnostic_script",
+      "sha256_before": "55438555cf1253b7a2e5105175e3e966aeccc21b5c30173ba57cce2e6ac0e938",
+      "mode_before": "664"
+    },
+    {
+      "from": "scripts/report_vd6_actor_feedback.py",
+      "to": "scripts/diagnostics/report_vd6_actor_feedback.py",
+      "kind": "diagnostic_script",
+      "sha256_before": "ea61c42037ae7395410f5ffc927635a8a59c93dad37d9c71a893ab517480ad57",
+      "mode_before": "664"
+    },
+    {
+      "from": "scripts/review_vd6_results.py",
+      "to": "scripts/diagnostics/review_vd6_results.py",
+      "kind": "diagnostic_script",
+      "sha256_before": "c9b2aee0348f5506791a2fc3195ba88b1e8dff09e0111f8bcca8aa531f2d6a7d",
+      "mode_before": "664"
+    },
+    {
+      "from": "scripts/summarize_vd6_actuator_diagnosis.py",
+      "to": "scripts/diagnostics/summarize_vd6_actuator_diagnosis.py",
+      "kind": "diagnostic_script",
+      "sha256_before": "a47cff9f797fada74fba56c3a4fd51ebaaedcd53c2c8f3c6dd6e3ba135bf1c61",
+      "mode_before": "664"
+    },
+    {
+      "from": "scripts/diagnose_vd2_legacy_getup.py",
+      "to": "scripts/diagnostics/diagnose_vd2_legacy_getup.py",
+      "kind": "diagnostic_script",
+      "sha256_before": "0c4fbcf83f846f5fbd02bba31a0e3a1e69f6988d9eb1007b3335a1bb2907750f",
+      "mode_before": "664"
+    },
+    {
+      "from": "scripts/diagnose_vd2_stand_recovery.py",
+      "to": "scripts/diagnostics/diagnose_vd2_stand_recovery.py",
+      "kind": "diagnostic_script",
+      "sha256_before": "77bea0b6e9e70b2cc1f400e9adc6340083b8f68bd9698510c307ae1d0929706b",
+      "mode_before": "664"
+    },
+    {
+      "from": "scripts/test_vd1_mujoco_scene.py",
+      "to": "tests/test_vd1_mujoco_scene.py",
+      "kind": "regression_test",
+      "sha256_before": "723ac1e0c5ff6631f4da2ca5c3716c83e57de5db3d294995ccfba7cdebde2847",
+      "mode_before": "664"
+    }
+  ],
+  "files_before": {
+    ".gitignore": {
+      "sha256": "3324475d09e6ffc3e43970e8c54bc269bf902ad8e3e70228312ce44defb2fb5c",
+      "mode": "664"
+    },
+    ".vscode/launch.json": {
+      "sha256": "6231730eb4141f0d24f4bc7a1a40696dd651e289222678941d1f1cd7a08dd881",
+      "mode": "664"
+    },
+    ".vscode/settings.json": {
+      "sha256": "bd7cd87665c934aee94aef80d9fcef4080960da0060a93355ef6c862c93737b8",
+      "mode": "664"
+    },
+    "B2_Z1_RELEASE.md": {
+      "sha256": "868852874e975580fd4a3db46e57250a0b8c89b77f7b869e332778d359397acd",
+      "mode": "664"
+    },
+    "README.md": {
+      "sha256": "c13d1bbd5e76322c19df3792c7808e774acb06ff45f3556189fa7b7a0a837a42",
+      "mode": "664"
+    },
+    "README_CN.md": {
+      "sha256": "e2ab62b8e93b83dbe7fef522db2eac63d00ff97a72b5dea6efe775cc9fa54384",
+      "mode": "664"
+    },
+    "deployment/vd2_real/CMakeLists.txt": {
+      "sha256": "5c8e389b284e10c9a709f0ed05bf6f3b01dd9dffac19f65f52c5286534be2be8",
+      "mode": "664"
+    },
+    "deployment/vd2_real/README_板载编译与运行.md": {
+      "sha256": "2ad9ad8fbf851857f001a675836e196d28b7d066a808141b162cfec4912bbebc",
+      "mode": "664"
+    },
+    "deployment/vd2_real/VALIDATION.md": {
+      "sha256": "8b78683bba70ac67c10094ba606799cebae357736fd2f5bfc8ecae7f148fefe6",
+      "mode": "664"
+    },
+    "deployment/vd2_real/build_board.sh": {
+      "sha256": "b67a925e934f084821a33f25428b401bf4cb1fcc3e3c5e773ddedbf5454c6d0a",
+      "mode": "664"
+    },
+    "deployment/vd2_real/config/deployment.yaml": {
+      "sha256": "9585c803d7b6f39ea6629546780037b5452cc2d249d662d917b5da3817f426a9",
+      "mode": "664"
+    },
+    "deployment/vd2_real/config/rear_d435i.yaml": {
+      "sha256": "ef9ed016edbf185e0236ea98d9340a4e6a0ff8581d60b7157976a0d0dc78dc34",
+      "mode": "664"
+    },
+    "deployment/vd2_real/docs/ARM_HANDOVER_20261107.md": {
+      "sha256": "b6335df951520400ff5b98193d56b4630db6f593cbf6c7a08ee00ace4edb8039",
+      "mode": "664"
+    },
+    "deployment/vd2_real/docs/CAMERA_FIX_20261105.md": {
+      "sha256": "35e93bb534f308e022b1f26a9d68628516b1fe878f3adf909c0fd50eeae2d371",
+      "mode": "664"
+    },
+    "deployment/vd2_real/docs/CAMERA_PAIR_RECOVERY_20261109.md": {
+      "sha256": "23bc9957deee63555ffa35caae23cac8d00eb271ba85ec280243b2227fdf7348",
+      "mode": "664"
+    },
+    "deployment/vd2_real/docs/CAPTURE_SESSION_20261106.md": {
+      "sha256": "0c892e3841dba8609a480bd3b7163f5acd84ce8e7b217d030aeb0b67aabb7d25",
+      "mode": "664"
+    },
+    "deployment/vd2_real/docs/COMMAND_REFERENCE_FIX_20261106.md": {
+      "sha256": "cb02d6c0751158192fbe548cec2e17da5405190950289f4a58aecb7089ba7097",
+      "mode": "664"
+    },
+    "deployment/vd2_real/docs/FEEDBACK_FIX_20261106.md": {
+      "sha256": "3371c031c820b602624821314136679caa7c3ab25a87fc960b2f9fa828677f6d",
+      "mode": "664"
+    },
+    "deployment/vd2_real/docs/FRONT_LOCAL_RECOVERY_20261106.md": {
+      "sha256": "8ebebcca0cb3ad09b82f8c04f93c2fc9e0860a9a2f9f6ed305d40fb8e88985b7",
+      "mode": "664"
+    },
+    "deployment/vd2_real/docs/FRONT_PATH_BOARD_20261106.md": {
+      "sha256": "ceaa0267f83c4bbf90a3cf5e889ebc9f21371f1223f7ef635a4bd658f473d18e",
+      "mode": "664"
+    },
+    "deployment/vd2_real/docs/INDEPENDENT_VISION_20261109.md": {
+      "sha256": "1daadc43bcc99777ece1d0b86a0e4e71e8aa239abb208f9891ad8a37d8d7e1b2",
+      "mode": "664"
+    },
+    "deployment/vd2_real/docs/LEGACY_GETUP_20261106.md": {
+      "sha256": "983d175807090797eda00d0c5e0a6d99110f4af9584a07ae92b66e53dc5febdd",
+      "mode": "664"
+    },
+    "deployment/vd2_real/docs/ONE_TERMINAL_20261106.md": {
+      "sha256": "49e05924e581700b210c40a255a4dca732fcf970036faab7b0ecef6749fb0728",
+      "mode": "664"
+    },
+    "deployment/vd2_real/docs/REAR_EXTRINSICS_20261105.md": {
+      "sha256": "d9752f4febf9aecfb1d642fa4cac28bb602321a1eb60aab1d1a2ab6090c47c6c",
+      "mode": "664"
+    },
+    "deployment/vd2_real/docs/REAR_OBSERVED_AND_Z1_EVIDENCE_20261106.md": {
+      "sha256": "921adcc4e840b42ee86cf43afdd1b3331912cf824e76bf32459c5e6012b240d8",
+      "mode": "664"
+    },
+    "deployment/vd2_real/docs/STAND_RECOVERY_20261106.md": {
+      "sha256": "d5973dc731c9212f8712c157422ac6d17daf2a467652214a3d8880460a134a79",
+      "mode": "664"
+    },
+    "deployment/vd2_real/docs/VISION_DEADLINE_20261106.md": {
+      "sha256": "1e82bb80221f580558156941d8c5beb148dffb4bb6195824e7c10513dea1e83f",
+      "mode": "664"
+    },
+    "deployment/vd2_real/docs/VISION_REALTIME_20261106.md": {
+      "sha256": "86704c8a9db9af4ffea565d5de44db06184e6f2e84e3aceaa4a0343dd14ddea6",
+      "mode": "664"
+    },
+    "deployment/vd2_real/docs/VISION_START_20261106.md": {
+      "sha256": "57b314c38155b862eb8a8cf4bc0e0c1de4317bf08ac48c4f9843f0cd95a187b2",
+      "mode": "664"
+    },
+    "deployment/vd2_real/docs/VISUAL_WINDOWS_20261107.md": {
+      "sha256": "555b66fe92a3bc9c91f1b5a5d2be6ba6ebcf394674533e64e3ec7420f5305378",
+      "mode": "664"
+    },
+    "deployment/vd2_real/python/cameras.py": {
+      "sha256": "2cd2d2f240a1586a6172b8cf3892ca452dffba6daf9df63f7aa3535addf7970b",
+      "mode": "664"
+    },
+    "deployment/vd2_real/python/control.py": {
+      "sha256": "72772a3720d9c897ede70ad71fb105c7db877fa5fc5cfa07dee37de166806b16",
+      "mode": "664"
+    },
+    "deployment/vd2_real/python/feedback.py": {
+      "sha256": "3d7f468cd30a76a6ab0bdcc45b637713aba79d0bcad8bcd868825715afa013c5",
+      "mode": "664"
+    },
+    "deployment/vd2_real/python/front_projection.py": {
+      "sha256": "55957c406ada29b7518bbe492e7d3e27aa04921ea0ee39a285f62671cc29cd7f",
+      "mode": "664"
+    },
+    "deployment/vd2_real/python/independent_vision.py": {
+      "sha256": "b6c397d66dbd353de182367caa41abf3aefc6cec7846c9aea62ac4d1c21d4182",
+      "mode": "664"
+    },
+    "deployment/vd2_real/python/native_io.py": {
+      "sha256": "ff89dffd54a7014ca040cc9ed7cf4a41a0027a6b15d5cf2ece9901f7d9a4d4d8",
+      "mode": "664"
+    },
+    "deployment/vd2_real/python/realsense_geometry.py": {
+      "sha256": "818edbf0e7450abdc84e24d22b6233f30d153098901d8793de0756cde0d4555f",
+      "mode": "664"
+    },
+    "deployment/vd2_real/python/realtime_perception.py": {
+      "sha256": "e38de51573a6fd2cb9e79353ab8b17b9b27591570b3e85252ae82b33f17d14dd",
+      "mode": "664"
+    },
+    "deployment/vd2_real/python/realtime_segmenter.py": {
+      "sha256": "f29bf2d1dcc8dbf9d206b18bdd547daab356ef22495f58fd5d3092bd803a7744",
+      "mode": "664"
+    },
+    "deployment/vd2_real/python/vision_start.py": {
+      "sha256": "273e5b0d6fb4abd0e0f2d0b60017b357125098e61504674f8edd213b85fb5b16",
+      "mode": "664"
+    },
+    "deployment/vd2_real/python/visual_preview.py": {
+      "sha256": "4279b8132229ded7f0037c92df304b8970898763d0f539b23f2d3d098f085672",
+      "mode": "664"
+    },
+    "deployment/vd2_real/requirements.txt": {
+      "sha256": "6150f065e92033f944aea8fcc35f775b3d553f082df1df500c89ebb7a602e300",
+      "mode": "664"
+    },
+    "deployment/vd2_real/run.py": {
+      "sha256": "4b15e37df2de417c9e77a44e98eb62967bd13a511ec5ae40243a9062eb5dc2ac",
+      "mode": "664"
+    },
+    "deployment/vd2_real/start_real.sh": {
+      "sha256": "756a87dbe3ec5f86adbcbb1d0260596db14b4623c2b252b16f44825750557d1b",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tests/test_arm_handover.py": {
+      "sha256": "3df9a83bbdeedf445c1748432d662b19544696c82a22b0624bf1089dedfd5b7c",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tests/test_calibration.py": {
+      "sha256": "c1fe86e2a1db6e4d8eff190a3188e30037958b78697c8f02314c2e92ecf1c3bc",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tests/test_contract.py": {
+      "sha256": "b0b21d7d15e06686c01514c96d5a3377a661e1d36f21dc2c46184acd57534f8a",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tests/test_feedback.py": {
+      "sha256": "9c5ec98479d238bd519322074b60a9c913d116763de0f9e3c164bfc721aac19e",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tests/test_front_estimation.py": {
+      "sha256": "adddff80003f18f0d1ab802a876d2d887684155c0ccb597d6f71127d464051ac",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tests/test_front_pruning.py": {
+      "sha256": "50eea02f91b2d7c48892da09057618e02933a16de3462278f4a05ad14acc1ca5",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tests/test_independent_vision.py": {
+      "sha256": "20220873e2faa56326f09f9fda0e98cb4c51fc3bf11b47e24ee69ab7e7c11d3e",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tests/test_one_terminal.py": {
+      "sha256": "883bb880c8b24906110c1f266f2f80ddd64bc4e5814738a94176ecda2a779141",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tests/test_real_start_targets.py": {
+      "sha256": "b0ce464f0a2e30186238eabb1ffbaca01f80eeddd81a9d7d5d1189aa6711a5be",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tests/test_realsense_geometry.py": {
+      "sha256": "f2fe208cfae6c8f450774c3e00a6d5f007599dce7007e6af3b4fc58e841c9f1a",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tests/test_realtime_vision.py": {
+      "sha256": "dd3ac3cd415c260219aee3c7840c5ed2eda18f16c10fe8b066fe476aa290426f",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tests/test_rear_outage.py": {
+      "sha256": "55606c2a6775754a188909f0ee3a7c9801b99976ecb9a2f54d4dbd6ee9c05f6d",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tests/test_rear_topology.py": {
+      "sha256": "5d38b9d0a8e39349ad1f1eed1fc1a83058b7aa51d4b6e44c14ecd4476f9bbcd9",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tests/test_stand_recovery.py": {
+      "sha256": "6a69a8154b0201da97a78f5346ab58547c0721440b2c8f648cd1629ea7728a96",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tests/test_stop_arm_reference.py": {
+      "sha256": "baf239b7a017de4414f27d95be53cf6485d4afd1fb1955610ed849a44eb4ee90",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tests/test_thinning.py": {
+      "sha256": "6ac2aabf67ecfb6bf5504f414a3b43641b62f89d7f3d49c5b0ca50e5dda8b924",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tests/test_vision_start.py": {
+      "sha256": "95bc34bbe28ba8c390011a9ff85fb3afe4781f2a22245dbcdf99c7453a379b24",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tests/test_visual_preview.py": {
+      "sha256": "5812dbb48fc27415986e8b4d263d23795c1112c0657430c30431cf7925d2e901",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tools/apply_camera_fix.py": {
+      "sha256": "af5263d07d4468029eaae3f1176c6542d73e6722db89c1cf6d66a7c48a7b674c",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tools/assemble_bundle.py": {
+      "sha256": "a28b7804ab1639de4cc278a0723161ea15558c5192ac00bef83db0b6fa763e63",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tools/benchmark_display.py": {
+      "sha256": "86604b922a1e5e755d5b519e8757158ad1bb17842cc7bbbc0681c29de0ca078b",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tools/benchmark_front_components.py": {
+      "sha256": "74631540ce703b0f8e975cdb03c13f549a055e109df8c45bc8b27c7bb5477807",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tools/benchmark_recorded_vision.py": {
+      "sha256": "2bb14c9b32c74d5b04b40e9f90042513e2176b731a575bf981b7fb4645c8972f",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tools/build_arm_handover_patch.py": {
+      "sha256": "d51d828ee7c5ea296cc0cd1f806fd63f71d6c70c8bcd6004badb81d710843013",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tools/build_camera_pair_recovery_patch.py": {
+      "sha256": "e40da4a3d3e1b3fc2091ec749a6911892c587e041e7b4d261c4dc782e8b126ab",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tools/build_camera_patch.py": {
+      "sha256": "02206e8266548787a649ea08d0d68530e949dc08c57ffb57c048fe5054c5177f",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tools/build_capture_session_patch.py": {
+      "sha256": "9c8111c1d068deb486f2ff28bde36a068820ee2337d9aeaf1b85651a8671ea81",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tools/build_command_reference_patch.py": {
+      "sha256": "ad1e783eb1c291fd8831bf9996d10b016c073330e6b1172983aaf28700ec685c",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tools/build_extrinsics_patch.py": {
+      "sha256": "73dcd2b200a41572316a5c6b4b3eaca9da45a3d8f4e207478d24b3ae589160f7",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tools/build_feedback_patch.py": {
+      "sha256": "65c623fa7835396a8dbe2622142e86e3e5102003c218fa668ef6eea239ace80d",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tools/build_front_local_patch.py": {
+      "sha256": "db1702f752383d6ea09ccaab74a7a456694ecd2a3327aa23e6f78f5da6307c3a",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tools/build_front_path_patch.py": {
+      "sha256": "94ff4ed98d2d394d2973b060c9ce3e548a41eae53da04de77186cc085947769e",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tools/build_independent_vision_patch.py": {
+      "sha256": "1aaa0fc653d9d747c7667972215a076988dbec550a42626ad538e0b3626745d8",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tools/build_launcher_patch.py": {
+      "sha256": "ae96faede7d32affc03eccd4d1508136a5da8c91915110e0daf74dd2f0b1cc75",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tools/build_legacy_getup_patch.py": {
+      "sha256": "c56808e96ca33409673d2fd5438403f3ce76e848af67dcf13289da843d4dde17",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tools/build_rear_observed_patch.py": {
+      "sha256": "c236e0f90d2be1aaed1feffece3a9419e298dd40e45cc49acac3efd64ba3f5f2",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tools/build_stand_recovery_patch.py": {
+      "sha256": "67760890639c7371c5abc232891d832c6b24d8fc88a05e95d31a655e544d2e36",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tools/build_vision_deadline_patch.py": {
+      "sha256": "26afb4972ea42d8cec5d34108dfc807d25c1abf725e0d35fe9188f03fa1cd0ff",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tools/build_vision_realtime_patch.py": {
+      "sha256": "807bf41a9cafc29af73acbe97d63e82b24377ed1b2eb3c2624d1053838d0d905",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tools/build_vision_start_patch.py": {
+      "sha256": "42a9839881da3aa104059a9b48db02ae1d4e55e2efac48f524e88e7f63c51c87",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tools/build_visual_windows_patch.py": {
+      "sha256": "f00b511834fffffda01a5b35742ccb4981d6193699055cbff5bacd00f0914fba",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tools/calibrate_rear.py": {
+      "sha256": "d55fb9dfbf32b4c40453552d822c8af72c779b3b5a9483028dfab3be15f5cba9",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tools/check_visual_stream.py": {
+      "sha256": "6a8c927878a0684eb6a04e1d786edb259c68f89c25e3a6a0d084cf273af20859",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tools/check_z1_command_latency.py": {
+      "sha256": "e27226fe466e5cbe1180342290652dc44f82cacd6d26656fc8513a85ffc652a8",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tools/install_feedback_fix.py": {
+      "sha256": "c1a7e12dd1c075c6e74d8d646a9148ab30b43a89bbe50648036dc102ddaf926c",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tools/install_launcher.py": {
+      "sha256": "01f5d20261d487be3ce1ddb013d54d60ff7b3235cc8e8b65ad3f0fe238142b88",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tools/install_rear_extrinsics.py": {
+      "sha256": "679d5e3d7bde5147c7683e87d9ed93cd244a15a3aec961a4d64f79dca32524f5",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tools/launch_real.py": {
+      "sha256": "62cfa1488056d958fb2d462d75b80bfaf342c7880419eccf440956cf038b6cef",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tools/replay_arm_handover.py": {
+      "sha256": "be9a2d2bb53ffa18584e6eb10023b300ee2e0e57c1d7edced5662a97b8d07f02",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tools/replay_front_path.py": {
+      "sha256": "088454ee040d9ac28999d4dcffbdd0b4fb7c5c1e5b1745881e44bd19e71930cc",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tools/replay_stop_reference.py": {
+      "sha256": "09581bcd6d9bcd2bf5350de4ac7ca20ee27c742b7cae720b408f02a9ed2ab43c",
+      "mode": "664"
+    },
+    "deployment/vd2_real/tools/replay_visual_pair.py": {
+      "sha256": "c0635b9fb495efb39382e979cb17f1bdec7c48a59f5d92a9335b95309980c7f3",
+      "mode": "664"
+    },
+    "docs/B2_MOTION_READINESS_20261021.md": {
+      "sha256": "22cef10fd64e1e3e86186bcdace2f978530bba9b68ae73950294125cba3b0d03",
+      "mode": "664"
+    },
+    "docs/HANDOFF_VA15_ACCOUNT_SWITCH_20261027.md": {
+      "sha256": "d89e66eb6d343819d05a6de2125e459046fa87d0788654aa1be2503ebe6aee02",
+      "mode": "664"
+    },
+    "docs/HANDOFF_VA15_REAL_V252_20261027.md": {
+      "sha256": "cd6499911c5850ee3f7803b5aa2e3194c58fd18472aeb844da468f759caa37c1",
+      "mode": "664"
+    },
+    "docs/HANDOFF_VA15_V256_REVIEW_20261029.md": {
+      "sha256": "bdbd0cecff87529d109b10486cc78fc52b797ef298d7375aef2f8b5b7b43ca1d",
+      "mode": "664"
+    },
+    "docs/HANDOFF_VA15_V257_PRECISION_20261029.md": {
+      "sha256": "63bc2e82ea1d7cb952b968167a4831250c7961bb22a2b813f56a1055c28ce835",
+      "mode": "664"
+    },
+    "docs/HANDOFF_VA15_VISUAL_TCP_20261029.md": {
+      "sha256": "90151f51cf263bb5fcc4528d473f3510315c9683536319dd14e1a031e070ed44",
+      "mode": "664"
+    },
+    "docs/VA15_FOUR_RUN_STOP_TRACKING_20261029.md": {
+      "sha256": "81846dfe2dd84b029a3bc265a2eb5aea61f05070bc8e0764928c4dc2681e9415",
+      "mode": "664"
+    },
+    "docs/VA15_REAL_RESTART_20261020.md": {
+      "sha256": "1dcfde516328bbf568c5c87f166bf0359834bed7c6f8f84c2788840d1c6adb8e",
+      "mode": "664"
+    },
+    "docs/VA15_REAL_SUPPORT_DIAGNOSIS_20261020.md": {
+      "sha256": "269d01fdc4364b9b50dccbed049af2a8338f49387354411135ee322ae98430a5",
+      "mode": "664"
+    },
+    "docs/VA15_V252_OFFLINE_TAKEOVER_20261027.md": {
+      "sha256": "53fcebe62854dd23303745bf0276032eeff663ef07744bb2c2253487429572c1",
+      "mode": "664"
+    },
+    "docs/VA15_V253_PROGRESS_20261027.md": {
+      "sha256": "e703e0c44b946e151ed7e032ca1c45fc36fdd68940eed56bedd65298350ebba1",
+      "mode": "664"
+    },
+    "docs/VA15_V254_REPAIR_20261027.md": {
+      "sha256": "2a0869d5209c64c086b26d9508cb974dc6cae31317ff31464bc68fa45c82c776",
+      "mode": "664"
+    },
+    "docs/VA15_V255_SDK_OWNER_20261028.md": {
+      "sha256": "59969465bc7cbbb64e592f71e53c4eabc4de15238564b4332484972f131971a4",
+      "mode": "664"
+    },
+    "docs/VA15_V256_BOARD_SYNC_20261029.md": {
+      "sha256": "5901e79527679fe631eabccf7411399c665b3bbb267af34b1fb71a1cf16c9a47",
+      "mode": "664"
+    },
+    "docs/VD1_BASE_RESPONSE_DIAGNOSIS_20261103.md": {
+      "sha256": "83bdc6437da384c2a5a86fafe33556ef8eaec63fb3e99d4d5a37cf6f30b70172",
+      "mode": "664"
+    },
+    "docs/VD1_DUAL_VISION_CONTROL_LOGIC_20261103.txt": {
+      "sha256": "6ff97967583dfce6226eee9fea121cc31fdc2cf70b3a7c94d89fb7a6bc202326",
+      "mode": "664"
+    },
+    "docs/VD1_DUAL_VISION_CONTROL_LOGIC_20261103_原文对应版.txt": {
+      "sha256": "51c972dcebfd164b567b31da0256369f23248c3d6f83852d877518b7c194ae91",
+      "mode": "664"
+    },
+    "docs/VD1_DUAL_VISION_DEBUG.md": {
+      "sha256": "d93d90e2c23d8ea5d9a163bbcfc100a0f75c89d27fb07e62dd5b2c9c8d897467",
+      "mode": "664"
+    },
+    "docs/VD1_FLAT_WALK_DEBUG.md": {
+      "sha256": "97fcd39860131fb8bcea539897ec6de5a7ec7816321840d386fc016161cfb525",
+      "mode": "664"
+    },
+    "docs/VD1_ISAAC_MASS_INERTIA_AUDIT_20261103.md": {
+      "sha256": "64a7a42eaff56033d5623afac1f9d116343a7742a045cfd1b4d4cc5b49a207c9",
+      "mode": "664"
+    },
+    "docs/VD1_MUJOCO.md": {
+      "sha256": "4f7eb0e11d16179ac4aeccccbc16902db49793d0b9979f117282396d643920e1",
+      "mode": "664"
+    },
+    "docs/VD1_MUJOCO_NO_PRIVILEGE_AUDIT.md": {
+      "sha256": "5bea6054eea19e2ef3a8db0b3b9de779ba1ea8d34b3a02bad590a1f0163b001e",
+      "mode": "664"
+    },
+    "docs/VD1_SEAM_ONLY_DEBUG_20261103.md": {
+      "sha256": "d530fcc45fd689666e47293f0aea903a021467ea9831396396882dbb942f9996",
+      "mode": "664"
+    },
+    "docs/VD1_STABILITY_FIX_20261103.md": {
+      "sha256": "d4aa2b95fa0a12b74db76c99414f78b9146b1787cd2a0a9223193f62e1fbe19d",
+      "mode": "664"
+    },
+    "docs/VD1_TRUTH_CURVE_DEBUG.md": {
+      "sha256": "c3ebbd15d73f29a77d119e917d5a612c9aa4d3fe8884783b3d72464d64513f04",
+      "mode": "664"
+    },
+    "docs/VD1_VISION_COMMAND_DIAGNOSIS_20261103.md": {
+      "sha256": "1077e2fb4c384b9b637b32ecae0fad392ab6ab3d567bab5e60e110e449b8c156",
+      "mode": "664"
+    },
+    "docs/VD2_ARM_HANDOVER_DEPLOY_20261107.md": {
+      "sha256": "4b5826c2ad224e6dedf668bb902f5259ac4b59dfe1411a31950ef14f484285a6",
+      "mode": "664"
+    },
+    "docs/VD2_CAMERA_PAIR_RECOVERY_SYNC_20261109.md": {
+      "sha256": "eb0888e995e8c9b14c717d8d005e4c48b3a5ccea912329ba8fbc56dbc21bed7c",
+      "mode": "664"
+    },
+    "docs/VD2_CAPTURE_SESSION_FIX_20261106.md": {
+      "sha256": "9b29887c23876eba8c24d7c55f08f86e2637a78afae22fdd29400d30f05424d6",
+      "mode": "664"
+    },
+    "docs/VD2_COMMAND_REFERENCE_FIX_20261106.md": {
+      "sha256": "115e228e97c7aefab0b6f348002b2f0eabb267963108b0bbc95e50c854d0d595",
+      "mode": "664"
+    },
+    "docs/VD2_D435I_CAMERA_FIX_20261105.md": {
+      "sha256": "6471b157ed0e8c61b86dd36c6ff77eb8540001b90dfeb50db653761612661a7d",
+      "mode": "664"
+    },
+    "docs/VD2_FRONT_PATH_BOARD_SYNC_20261106.md": {
+      "sha256": "aa8aa475be9b7ed656fb384ff9d7c30311f9d063cbc1e148c9573c48043c2c8a",
+      "mode": "664"
+    },
+    "docs/VD2_FRONT_START_FAILURE_AND_BOARD_FIX_20261106.md": {
+      "sha256": "196aa5e84d082edba59c9f19fd0a5f38032048586c10fb43cf4e22225b120cdc",
+      "mode": "664"
+    },
+    "docs/VD2_FRONT_STRAIGHT_START_20261107.md": {
+      "sha256": "27039dbcb53c5ab265c5f38c015b33dc6e70b87306e0f6614fd6f4150f45e073",
+      "mode": "664"
+    },
+    "docs/VD2_FRONT_VISIBLE_SUPPORT_20261109.md": {
+      "sha256": "603e512662cdd168c383c45b6a699069bec5b42396795bf44f675a20f09f9df0",
+      "mode": "664"
+    },
+    "docs/VD2_GUI_VISIBILITY_FIX_20261107.md": {
+      "sha256": "6e4e181a4da892cde56d84a1d5405a28b4ac8bb722a0c0921cb6886b20877b6b",
+      "mode": "664"
+    },
+    "docs/VD2_INDEPENDENT_VISION_BOARD_SYNC_20261109.md": {
+      "sha256": "c99d67c2aebcbf7b002f6e3c7faf12cc40af4bbf2d0b1f371ae2ff9a07d86f46",
+      "mode": "664"
+    },
+    "docs/VD2_LEGACY_GETUP_20261106.md": {
+      "sha256": "a19e8407e6e83df21b9b2f7cb1ca7659926c5b657c87d138be37e8e7d0bd8119",
+      "mode": "664"
+    },
+    "docs/VD2_LOG_REVIEW_20261106_164440.md": {
+      "sha256": "be813ef57acb3cfc1fd12e2986af2a353eb1c852fb17af087f030b4d01b4e212",
+      "mode": "664"
+    },
+    "docs/VD2_ONE_TERMINAL_DEPLOY_20261106.md": {
+      "sha256": "74f143c0a45ee2bf6a8ea3fb16cb927ff68eecb323c622eb67c8fb3a9676072e",
+      "mode": "664"
+    },
+    "docs/VD2_READY_EVIDENCE_20261107.md": {
+      "sha256": "f4616732ce8980a76e994afd5ff056a15478f837da1842b31f79110c4d5a9c10",
+      "mode": "664"
+    },
+    "docs/VD2_REAL_BOARD_PACKAGE_20261105.md": {
+      "sha256": "f98e8ea056e0a62d8835138f47c6d81e1c105fb2b2aeffcf5acc63847ac9de33",
+      "mode": "664"
+    },
+    "docs/VD2_REAL_DEPLOY_READY_20261105.md": {
+      "sha256": "4e2c137198f9ac44266f2f1a5a21bfcb7ac86e3b70f98b1aae5c65483e155168",
+      "mode": "664"
+    },
+    "docs/VD2_REAL_VISION_DEADLINE_20261106.md": {
+      "sha256": "55a746b329fe31d37c8a219bfc4c74ba1a99d1ef7c8682ad9d801d0b400cca8a",
+      "mode": "664"
+    },
+    "docs/VD2_REAL_VISION_REALTIME_20261106.md": {
+      "sha256": "2aaa51e5de5ab7cad672f5b9f9176f0ff4f4320c08d5cc2907c8a34845200e10",
+      "mode": "664"
+    },
+    "docs/VD2_REAR_164_DIAGNOSIS_20261107.md": {
+      "sha256": "17076067043b26743dc0e4be737a7d2a0b1b248c729d22bd89f3b36da4462ef4",
+      "mode": "664"
+    },
+    "docs/VD2_REAR_CONTINUITY_FIX_20261107.md": {
+      "sha256": "4c4a0e9f02ac62f977b9c805a3343d696ca87371c0d3908845f312467ca49045",
+      "mode": "664"
+    },
+    "docs/VD2_REAR_OBSERVED_FIX_20261106.md": {
+      "sha256": "34a4ae7881ae1fa23051c17af21eb4c45f6c27cf15aa0c5980e6940908208219",
+      "mode": "664"
+    },
+    "docs/VD2_REAR_RGB_TOPOLOGY_20261107.md": {
+      "sha256": "c344a59819fa7ce1bc4904cf347712991b00ed0457f73f9a1a04c5efd910508f",
+      "mode": "664"
+    },
+    "docs/VD2_REAR_TOPOLOGY_BOARD_SYNC_20261109.md": {
+      "sha256": "29ad8a866b8cd5f2ed4a2731c835e107f1bac4aacb069fb5120bbb1748aebe4d",
+      "mode": "664"
+    },
+    "docs/VD2_REAR_WORKSPACE_DEPLOY_20261107.md": {
+      "sha256": "6e7f252ce3bc3d59ebe0754e13e45914024dfc5d7fb43efb4f88ebdb2ce2904e",
+      "mode": "664"
+    },
+    "docs/VD2_REAR_Z1_FAILURE_20261106_154518.md": {
+      "sha256": "a7806724cb00503167722f9e77c51ed1707671de29e82d477cb6c2b67ca40337",
+      "mode": "664"
+    },
+    "docs/VD2_VISUAL_WINDOWS_DEPLOY_20261107.md": {
+      "sha256": "05a403476d7dabc3b263759caea7cfbc5b08658a87198c3261013322a0840d50",
+      "mode": "664"
+    },
+    "docs/VD2_Z1_TRACKING_FAILURE_20261107_133738.md": {
+      "sha256": "a8fa529515601b048fdbb7fb0cedb6391792f998f8eab69c7a6fabcbd86f3077",
+      "mode": "664"
+    },
+    "docs/VD3_FRONT_PATH_MUJOCO_20261106.md": {
+      "sha256": "25d47d3315544a19891d4a7924697fed58434844fa58ebdd1d42891a85c74b2e",
+      "mode": "664"
+    },
+    "docs/VD3_MIRROR_2000_MUJOCO_DEBUG_20261105.md": {
+      "sha256": "4d1b8e4fefd496d7193821892a30e29e82728f346f4fd2965de50db501751a70",
+      "mode": "664"
+    },
+    "docs/VD3_MUJOCO_DEPLOYMENT_20261104.md": {
+      "sha256": "5778b9e4256413711e29760425a00cadcda1e42f52db11e15b950e5c708dffdc",
+      "mode": "664"
+    },
+    "docs/VD5_GAIT_DIAGNOSIS_20261111.md": {
+      "sha256": "fd2b0995a1c2d1c118df7437eb9fc2f8e5470a41203177d5db9871769d09a94f",
+      "mode": "664"
+    },
+    "docs/VD5_MUJOCO_SIM2SIM_20261110.md": {
+      "sha256": "010df73c4d5613b42a1fa5c71e8214223f30ca70f134c8fe00ac6e4c5156cad5",
+      "mode": "664"
+    },
+    "docs/VD5_REAR_PREVIEW_20261111.md": {
+      "sha256": "ea0ee8d3250f55046b5410482e73faea3e320fe7954d0215854230dee130673c",
+      "mode": "664"
+    },
+    "docs/VD5_REAR_STABILITY_20261111.md": {
+      "sha256": "a46a4749c2deb01e1ad3b32e5398a82d579f6c0d49610a342f19a7ef6208d17b",
+      "mode": "664"
+    },
+    "docs/VD5_WORK_DISTANCE_20261111.md": {
+      "sha256": "b15222371957da1c60674d0ac47c892c5fe112f9992e627dda8736c3e5bee5d4",
+      "mode": "664"
+    },
+    "docs/VD6_ACTOR_FEEDBACK_20261111.md": {
+      "sha256": "c19473e15ce78307bbd33d446e3a08a8c2da61a7438c9cab7ea907cc89f25587",
+      "mode": "664"
+    },
+    "docs/VD6_ACTUATOR_DIAGNOSIS_20261111.md": {
+      "sha256": "3761a6599b87e3162530431ac3587a543551296f957bf9b2e051c6041f8f9458",
+      "mode": "664"
+    },
+    "docs/VD6_ROLL_PULSE_REVIEW_20261111.md": {
+      "sha256": "be522c7a38483f5d032acfc495ca8f3898b0f3d08b648d7524f7476de94c9a5a",
+      "mode": "664"
+    },
+    "docs/VD7_SHORT_TRAINING_REVIEW_20261111.md": {
+      "sha256": "d6fbb4485feb6153db8f0d3859077e75b9ee1bb8b3dcf2e4f66ff860b0628757",
+      "mode": "664"
+    },
+    "docs/VD8_ROLL_LANDING_REVIEW_20261111.md": {
+      "sha256": "c8b35bf67058d9534f1bc125a7a4bc4dc42dfa994397a06c67d986fc7fd7999f",
+      "mode": "664"
+    },
+    "docs/VD9_TRAINING_REVIEW_20261112.md": {
+      "sha256": "b1449198c8080dbb7117bc366c25ce8fea4767bca8c6bf61f3162a836e721bd3",
+      "mode": "664"
+    },
+    "docs/VD9_WARM_START_500_REVIEW_20261112.md": {
+      "sha256": "773d0b199ecb6e9c925bb6ad2b7faf267b45f71a5e3a9d31757cfc8bf28887d6",
+      "mode": "664"
+    },
+    "scripts/analyze_vd1_vision_commands.py": {
+      "sha256": "9939fc10d7b5b10349642f879dd353991c5fd5c0da733b0d94601f068fefa27f",
+      "mode": "664"
+    },
+    "scripts/analyze_vd5_work_distance.py": {
+      "sha256": "ea19a7e7eaf3a44baf2c0f33791461c1ca3cb56793369841909cbbf3ecc318ac",
+      "mode": "664"
+    },
+    "scripts/analyze_vd6_actor_feedback.py": {
+      "sha256": "d6ac94085734d02dab229cb1b272d5d3d4909521df8980e49e7edad51fe8b8c4",
+      "mode": "664"
+    },
+    "scripts/analyze_vd6_joint_oscillation.py": {
+      "sha256": "72c83bced9da227389fbad2f5cf53f7724c444bd5066f76d9fc35b348912375c",
+      "mode": "664"
+    },
+    "scripts/analyze_vd6_joint_response.py": {
+      "sha256": "e8edd8470c2201135b5f5393ea9cf6bc6ae84ed870d4ec13985dbd7ce906d207",
+      "mode": "664"
+    },
+    "scripts/analyze_vd6_roll_pulse.py": {
+      "sha256": "a277f2216577e9d7c483ae276822c65fefed32819bf49340415935adf54a6cce",
+      "mode": "664"
+    },
+    "scripts/common.sh": {
+      "sha256": "bc57ef6e9017d25b2afdd1f9bbfda4d618c0a0a93d8ddd08f162a88ab09ca94c",
+      "mode": "664"
+    },
+    "scripts/debug_vd1_dual_vision.py": {
+      "sha256": "1d7e8324f411a7901350f3519fe9c3a5e427ff8f7c3c5e2c084ed8f935977a58",
+      "mode": "664"
+    },
+    "scripts/debug_vd1_dual_vision.sh": {
+      "sha256": "4bbfed473ce33df5076acb478e199ff76366341670999d5420c78254315a1741",
+      "mode": "664"
+    },
+    "scripts/debug_vd1_flat_walk.sh": {
+      "sha256": "8335a612ac0947adb263fdcb1ff48fcdbbcfd6ad1023e7f733b895be49d87382",
+      "mode": "775"
+    },
+    "scripts/debug_vd1_truth_curve.py": {
+      "sha256": "45cf0d6ad3f9d4b3f08454f2fb8261990c8776a011d58ecdf36ec91b8147c9a1",
+      "mode": "664"
+    },
+    "scripts/debug_vd1_truth_curve.sh": {
+      "sha256": "4c25103b4c12c01aee34690d23e96cdcc9a2725f2399772264614e4ba3d178f8",
+      "mode": "664"
+    },
+    "scripts/debug_vd3_rear_vision.py": {
+      "sha256": "189f534dc50e69269c8995edcd1c2dec0bdf6ca31dd63dfffe3878cee300cba7",
+      "mode": "664"
+    },
+    "scripts/debug_vd3_rear_vision.sh": {
+      "sha256": "453fb2128c77f7c9b246ee15d147154195bccec566138a7aa153d96dde4b5f87",
+      "mode": "775"
+    },
+    "scripts/debug_vd5_gait_compare.sh": {
+      "sha256": "22e3a28a3e760c5a907cbc8f24fbdb1f6875025c78ecafd794e89fc4755773e2",
+      "mode": "664"
+    },
+    "scripts/debug_vd5_mujoco.sh": {
+      "sha256": "c5b0821ca2142140c9dd66f17bd6715531d30101aa84411469e87c413607f883",
+      "mode": "664"
+    },
+    "scripts/debug_vd5_rear_preview.sh": {
+      "sha256": "1e02cb89abd49777bc96f22831e07eee1ded742af33e9b99487c6d94f20e0de1",
+      "mode": "664"
+    },
+    "scripts/debug_vd5_work_distance.sh": {
+      "sha256": "e960ca959d3b406100af8fa4631d69f7b44122d4d437d56c21b8b5450f9fbcd8",
+      "mode": "664"
+    },
+    "scripts/diagnose_vd1_base_response.py": {
+      "sha256": "82644767c67816630806f3784bf3678161b16e6ddde58052dfc876b51a67b304",
+      "mode": "664"
+    },
+    "scripts/diagnose_vd1_isaac_response.py": {
+      "sha256": "e768239d6e562de198c8c11765b00551e8a69194d6a12a21bbb4a77ca64da2bb",
+      "mode": "664"
+    },
+    "scripts/diagnose_vd2_legacy_getup.py": {
+      "sha256": "0c4fbcf83f846f5fbd02bba31a0e3a1e69f6988d9eb1007b3335a1bb2907750f",
+      "mode": "664"
+    },
+    "scripts/diagnose_vd2_stand_recovery.py": {
+      "sha256": "77bea0b6e9e70b2cc1f400e9adc6340083b8f68bd9698510c307ae1d0929706b",
+      "mode": "664"
+    },
+    "scripts/diagnose_vd5_gait.py": {
+      "sha256": "0c6ac70c32f9fa8c8b5580300178be7eb763e5278852ea9b46023c9d00edd187",
+      "mode": "664"
+    },
+    "scripts/download_gazebo_models.sh": {
+      "sha256": "eb316acf2931b4698d7cc47b3201f32230a1a35138a7a6567dcde9523b9cdccf",
+      "mode": "775"
+    },
+    "scripts/download_inference_runtime.sh": {
+      "sha256": "c84dadfc8206fb1d0262721fdedd6786d2b6939f65201e736bd04620af829416",
+      "mode": "775"
+    },
+    "scripts/download_mujoco.sh": {
+      "sha256": "c5ad0652997d822bf88eec538474519e6418fe9e9e5cedc350d2fe2b17a45de5",
+      "mode": "775"
+    },
+    "scripts/download_robot_descriptions.sh": {
+      "sha256": "b6fa8d25225214e80c907a44c603e13c89a85b58ca99987cebafd71e9d2eb95c",
+      "mode": "775"
+    },
+    "scripts/export_vd5_policy.py": {
+      "sha256": "f9ce6294601a8ec4a24676e3b7e0c898a7e9b7dfcafd4e10a9d6a050b5f4b477",
+      "mode": "664"
+    },
+    "scripts/fixtures/vd1_fixed_camera_tool_command.json": {
+      "sha256": "1a1dd02d1b8bcc6290df1fc8ca069b5df5fe06449a4c39ad142965fdb0ba945b",
+      "mode": "664"
+    },
+    "scripts/generate_mujoco_crack_heightfield.py": {
+      "sha256": "b7da1e7d358b880662d45a36ea67bc79266d7be43cc9f3aa109aa8c94260212d",
+      "mode": "775"
+    },
+    "scripts/generate_mujoco_cracked_road.py": {
+      "sha256": "d73d6130bfd71ee1d519c449a069f51c9bd4370a576b0744c7e0ebf8d1c32b28",
+      "mode": "775"
+    },
+    "scripts/install_pytorch_jetson.sh": {
+      "sha256": "fbb02109e782899363ff91778c8b5f6cfdfda70eb10968277ae1e1fb80fd7f63",
+      "mode": "775"
+    },
+    "scripts/play_vd1_mujoco.py": {
+      "sha256": "bf6ca2f21390d9beba50bc880189b57d1d3a2ebfcc4721b4b30065702970eef4",
+      "mode": "664"
+    },
+    "scripts/play_vd3_front_path.sh": {
+      "sha256": "14883ab2c9f067d3459afdbd78e9d005f23c7518d339b444060047695934900e",
+      "mode": "664"
+    },
+    "scripts/play_vd3_mujoco.py": {
+      "sha256": "bdb80264ff30e9b8133a4f35887fbf28423014dfadddc4b55a2555a0a0432acf",
+      "mode": "664"
+    },
+    "scripts/play_vd3_mujoco.sh": {
+      "sha256": "8ceed4d1d0e7f328da17c1ef641d3b251f2dfc8231c090aa8b4f50c3a46da207",
+      "mode": "664"
+    },
+    "scripts/play_vd5_mujoco.py": {
+      "sha256": "95bc8c0f1c3b4ea63b71ce2e1bec26798499fcd230db7630a8a5d5a42a4e1297",
+      "mode": "664"
+    },
+    "scripts/plot_vd5_gait_compare.py": {
+      "sha256": "9c40744b144574d307efc326de5efa0c3d70f5316004efb00858ee32e9c3128d",
+      "mode": "664"
+    },
+    "scripts/probe_vd6_effort_readback.py": {
+      "sha256": "ebe7c5dada58a99de7b26f725831e0a804abebaf8962383707ce10b88da44be5",
+      "mode": "664"
+    },
+    "scripts/replay_front_startup.py": {
+      "sha256": "e0d4c47b33f4bd457879dad18ffa82af8dd9a5922d3006e0bb0fffcef1561fde",
+      "mode": "664"
+    },
+    "scripts/replay_front_visible_support.py": {
+      "sha256": "751a7d19fd9bb0b75b1bf15efd5882ff9224168ed7374545d5318cf580a5edf1",
+      "mode": "664"
+    },
+    "scripts/replay_vd1_fall_contacts.py": {
+      "sha256": "14845bb5b7c0bafcb02be90c18532c3a561404796dce5033b68290123bd4bc34",
+      "mode": "664"
+    },
+    "scripts/replay_vd6_fixed_arm.py": {
+      "sha256": "55438555cf1253b7a2e5105175e3e966aeccc21b5c30173ba57cce2e6ac0e938",
+      "mode": "664"
+    },
+    "scripts/report_vd6_actor_feedback.py": {
+      "sha256": "ea61c42037ae7395410f5ffc927635a8a59c93dad37d9c71a893ab517480ad57",
+      "mode": "664"
+    },
+    "scripts/review_vd6_results.py": {
+      "sha256": "c9b2aee0348f5506791a2fc3195ba88b1e8dff09e0111f8bcca8aa531f2d6a7d",
+      "mode": "664"
+    },
+    "scripts/run_b2_z1_no_vision.sh": {
+      "sha256": "a35da3e5eac2f9c2d689e9c7cf5751036f564a9276440ba5e2d391f684579f7e",
+      "mode": "775"
+    },
+    "scripts/run_b2_z1_real.sh": {
+      "sha256": "54302f662f840be9cc4ce9ccac6a5d737019b5757e359f966f482733fb993205",
+      "mode": "775"
+    },
+    "scripts/run_b2_z1_real_near_visual.sh": {
+      "sha256": "75de3cee3973b817b9e86338a77c40232a57ef4f04fade6db121903a0ac8e7de",
+      "mode": "664"
+    },
+    "scripts/run_b2_z1_trajectory.sh": {
+      "sha256": "446161c23e7eb117ea1983395e2871a58219e8adb88d1637935079a56a3ad870",
+      "mode": "775"
+    },
+    "scripts/run_b2_z1_vision_trajectory.sh": {
+      "sha256": "79615c7522dfde87e42c1eda8b9dc2016bdc36f0733ef7637b85645956b94d94",
+      "mode": "775"
+    },
+    "scripts/run_mujoco_rhacracknet_bridge.py": {
+      "sha256": "2cd8dbd682f67cb8e528c27f09863d0df7d9261bc5461d206a608482e61cbe92",
+      "mode": "775"
+    },
+    "scripts/run_vd1_dual_camera_bridge.py": {
+      "sha256": "c03dc01d90fa2ab36a8415bbcaed5f4652d2b1a0afbc3865c7f32fdebadcdf81",
+      "mode": "664"
+    },
+    "scripts/run_vd1_mujoco.py": {
+      "sha256": "1e44ebb71d9e81a9186734e03ef9c50896416521b8feadd4c97056587156174c",
+      "mode": "664"
+    },
+    "scripts/scale_mujoco_visual_crack.py": {
+      "sha256": "9beb3cb7bf850fdb8c96a0adb90beb5393d0a75e5777af92415f6708aea23562",
+      "mode": "775"
+    },
+    "scripts/summarize_vd6_actuator_diagnosis.py": {
+      "sha256": "a47cff9f797fada74fba56c3a4fd51ebaaedcd53c2c8f3c6dd6e3ba135bf1c61",
+      "mode": "664"
+    },
+    "scripts/test_vd1_mujoco_scene.py": {
+      "sha256": "723ac1e0c5ff6631f4da2ca5c3716c83e57de5db3d294995ccfba7cdebde2847",
+      "mode": "664"
+    },
+    "scripts/vd1_base_response_viewer.py": {
+      "sha256": "c27eb0dddf1709841acf8e5d1cc0ec68b11313114697218067d38fbce9669b66",
+      "mode": "664"
+    },
+    "scripts/vd1_front_path_estimator.py": {
+      "sha256": "7ec8989cb3ab0b45a473a11b3f1e5745757701d40d45d7bd8ae56eab20e5b532",
+      "mode": "664"
+    },
+    "scripts/vd1_mujoco_contract.py": {
+      "sha256": "d03dfc3b22a5121b1c3537be5ab80690b02b0d74af6abdf7b94e1e4c104444c8",
+      "mode": "664"
+    },
+    "scripts/vd1_mujoco_road_contact.py": {
+      "sha256": "a8d13a3694d2e04647dce0fbf9b94b3501022bc526cb65b41d77b364f9e4c7f4",
+      "mode": "664"
+    },
+    "scripts/vd1_mujoco_scene.py": {
+      "sha256": "98d383dfcd5f7db8cc212d1157103cdfab50cf6f742462a1e016bc3d0d8e5c41",
+      "mode": "664"
+    },
+    "scripts/vd1_mujoco_velocity_constraint.py": {
+      "sha256": "9a57f66d86254c1bb6d0396a92502cb1cfd3e61c195272b0dee824a37196f115",
+      "mode": "664"
+    },
+    "scripts/vd1_mujoco_velocity_impulse.py": {
+      "sha256": "60d7cbadd51debc5deb74fd7beab4b228a5c8a317c987f80b406fff345665aef",
+      "mode": "664"
+    },
+    "scripts/vd1_mujoco_velocity_solver.py": {
+      "sha256": "18ebe50157f20e41d60f3811d63e7fc423f7f5f7363faf9e782fcfa6aec65dbf",
+      "mode": "664"
+    },
+    "scripts/vd1_visual_front.py": {
+      "sha256": "73c2ebd52efc7f6686633a83ef8f837895ea8b2d86f53fc01e095ff1557a9589",
+      "mode": "664"
+    },
+    "scripts/vd1_visual_guard.py": {
+      "sha256": "ebf11efd0240fdac08c5797c16e6db69482189aa5c41b739f8ce7679303357aa",
+      "mode": "664"
+    },
+    "scripts/vd1_visual_path.py": {
+      "sha256": "afd44a486a3d7c94862f96178fd5c008804d4b4a0e7588788114121ce5316d55",
+      "mode": "664"
+    },
+    "scripts/vd1_visual_rear.py": {
+      "sha256": "e6a690791d2b0c3f66f3612f88386a1f41872d584016b0a9e52a8a682bf6311e",
+      "mode": "664"
+    },
+    "scripts/vd3_mujoco_policy.py": {
+      "sha256": "fe9135b4dfe2fbc76f3e16d7d09485468def7db84297e5d7872246c3d0446232",
+      "mode": "664"
+    },
+    "scripts/vd5_camera_geometry.py": {
+      "sha256": "ed0431621a305f403d3b558a96cdb0cc57f676daa078dc0812ca15906e32754c",
+      "mode": "664"
+    },
+    "scripts/vd5_gait_metrics.py": {
+      "sha256": "127ddaabb7981ffe51626ef56d54123d18c8436399ddfa9026b1381f38ca0909",
+      "mode": "664"
+    },
+    "scripts/vd5_gun_mask.py": {
+      "sha256": "5e82c3a7027a4c92666486a50e7d8a75e8cc6b93e19526f19e35332aa9af034b",
+      "mode": "664"
+    },
+    "scripts/vd5_mujoco_control.py": {
+      "sha256": "88c7fc2d10a8d360200321b8f3b9ac2b80c7a7ba6560ca14540055115815addb",
+      "mode": "664"
+    },
+    "scripts/vd5_mujoco_policy.py": {
+      "sha256": "475ef3c0948c94f0094ec3327ea16c94865fbf861f9ecf62ce23d1c3c5d9e046",
+      "mode": "664"
+    },
+    "scripts/vd5_rear_centerline.py": {
+      "sha256": "09c7ee4edfcc823484bd41650591a6faae450c3650a31ba468be9de7ac77dcea",
+      "mode": "664"
+    },
+    "scripts/vd5_rear_path_memory.py": {
+      "sha256": "3dbed2d2a46eb2bd18b86a377ce153bd5dfaffaad8ab64b11087e765c3170a8a",
+      "mode": "664"
+    },
+    "scripts/vd5_visual_control.py": {
+      "sha256": "101f298bf3a7371e64898d2109ec3b4ed94a38b2e659ad5c67859277873f28bc",
+      "mode": "664"
+    },
+    "tests/fixtures/vd1_rear_discontinuity.json": {
+      "sha256": "90d6b68a8bceeba9a6e647533d8e245c13f5de9bedf2b6fa291df9ee055c4f5b",
+      "mode": "664"
+    },
+    "tests/test_front_startup_guidance.py": {
+      "sha256": "a983d91294fd2a82b6f7eff9e8d15f52a77285f1ff705f75008661c4f72f837a",
+      "mode": "664"
+    },
+    "tests/test_vd1_base_response.py": {
+      "sha256": "a9ee6c5686b6ce12e091176e5321f21b0d17fac84a453a342669c03e57b7f1b3",
+      "mode": "664"
+    },
+    "tests/test_vd1_base_response_viewer.py": {
+      "sha256": "656b2cd0500327f91e202b05820ff45a78e3766ecd526124105cf35ea4e504c6",
+      "mode": "664"
+    },
+    "tests/test_vd1_front_path_estimator.py": {
+      "sha256": "3816956fb488dc90e5f6edb03d08cfab916b4e857bdf40190333c41930f14750",
+      "mode": "664"
+    },
+    "tests/test_vd1_mujoco_contract.py": {
+      "sha256": "0d75f964e11a7f878e56a9ffc6348206bd42e9615d60daeddadf9f51aaa61770",
+      "mode": "664"
+    },
+    "tests/test_vd1_mujoco_implicit_position.py": {
+      "sha256": "93a4267fceacc436cfed35408a6e5193f037c6ad4f2083f4a1b0b30b592d79ef",
+      "mode": "664"
+    },
+    "tests/test_vd1_mujoco_launcher.py": {
+      "sha256": "6c13e8db73247a3868347bf3d92fb6be41bb5c133ad45d949db81024cb33d839",
+      "mode": "664"
+    },
+    "tests/test_vd1_mujoco_velocity_impulse.py": {
+      "sha256": "602089913cd7fb3bc1e8357987412eb06b36e15f961883058d84544b719f2892",
+      "mode": "664"
+    },
+    "tests/test_vd1_mujoco_velocity_solver.py": {
+      "sha256": "8921f9924d14b828a9afff1889324881ed121d5cf11d8c0697f490a1a870829e",
+      "mode": "664"
+    },
+    "tests/test_vd1_road_contact.py": {
+      "sha256": "a562c98c33a38a7148375c6dccb230e61d78d6113886213d15ace6f210fe369e",
+      "mode": "664"
+    },
+    "tests/test_vd1_tape_road.py": {
+      "sha256": "331df7c58ee977a03604dbdbc8fc6fae432c92a5d17ec757bf13df2eda13ef0e",
+      "mode": "664"
+    },
+    "tests/test_vd1_truth_curve.py": {
+      "sha256": "c6bf6063081200301825ba333105abb293a5f02e3f66bbf94b9526104bde70bb",
+      "mode": "664"
+    },
+    "tests/test_vd1_visual_front.py": {
+      "sha256": "dfbbe70dbc6360087e4c454a8ee50f372b8cdaf3d042c0f94a89d6cdf6569311",
+      "mode": "664"
+    },
+    "tests/test_vd1_visual_guard.py": {
+      "sha256": "50ffc61760f0572748f6a9831821df7e02cf6b965b146bd0bbb58f49ee07a16e",
+      "mode": "664"
+    },
+    "tests/test_vd1_visual_path.py": {
+      "sha256": "3d4a3fb86360fab4482c83cc1802c43e4c2419c89463cda54e5a6c9fd7376ce5",
+      "mode": "664"
+    },
+    "tests/test_vd1_visual_rear.py": {
+      "sha256": "2461b8da0b9f82eca3641fee1f8a23cb575459898130780a81486c605abd36d5",
+      "mode": "664"
+    },
+    "tests/test_vd1_zero_gun_mass.py": {
+      "sha256": "266f417208826fbf76265f586b868b23064bd896fd3da78756c868e157df62c9",
+      "mode": "664"
+    },
+    "tests/test_vd3_debug_summary.py": {
+      "sha256": "966ab839b654ce0ac129159fd81d06a2013e1f5653b15c449a3696049fed26ad",
+      "mode": "664"
+    },
+    "tests/test_vd5_gait_metrics.py": {
+      "sha256": "421adbfb329baf670ba318e4bcee1c4cc7607527a049d25aca5d3b421366e5dd",
+      "mode": "664"
+    },
+    "tests/test_vd5_measured_vision.py": {
+      "sha256": "853709b93b03f9538c6513bfdb1cb0dcf6e27a39406fc088688bb7e2f8778aeb",
+      "mode": "664"
+    },
+    "tests/test_vd5_mujoco_control.py": {
+      "sha256": "6e10bac60c936bece3094123eba1b38e14e24ae70307c1f13cb65e26bf275e28",
+      "mode": "664"
+    },
+    "tests/test_vd5_rear_centerline.py": {
+      "sha256": "121994c74f53f572925f1b07b0449fa4b45d1dc75ca0a9c41cad23ee38b38406",
+      "mode": "664"
+    },
+    "tests/test_vd5_rear_path_memory.py": {
+      "sha256": "1cb49069e8797d356855e11a4e8b643a8f3b388bae1eed0f3aa06e4f9a562398",
+      "mode": "664"
+    },
+    "tests/test_vd5_visual_control.py": {
+      "sha256": "d050e25ff381bd45845632634302f5e90375e6a4817ce89851739e7771fffe6a",
+      "mode": "664"
+    },
+    "tests/test_vd6_actor_feedback.py": {
+      "sha256": "a05400b535fe7cdc4a0884b6167f6ee748e3a64ad5f8cc234cdfbd52515c6381",
+      "mode": "664"
+    }
+  },
+  "git_index_sha256": "736825f5697d0745605cfafa242d22f990c5ad33c4aa89eed8e64118b2836bb7",
+  "broken_markdown_links_before": []
+}
+

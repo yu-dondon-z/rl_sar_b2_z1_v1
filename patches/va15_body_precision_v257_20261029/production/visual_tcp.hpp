@@ -1,0 +1,390 @@
+#pragma once
+#include "near_visual_guide.hpp"
+#include <Eigen/Core>
+#include <Eigen/Geometry>
+#include <algorithm>
+#include <array>
+#include <deque>
+#include <limits>
+
+// Monocular FLAT-floor experiment. Local inertial/no-slip odom, NOT depth,
+// global localization, a contact sensor, or a hardware-qualified estimator.
+namespace va15_tcp {
+using V3=Eigen::Vector3d;
+struct Pose {
+    std::uint64_t ns=0;
+    V3 p=V3::Zero();
+    Eigen::Quaterniond q=Eigen::Quaterniond::Identity();
+    bool valid=false;
+};
+inline bool ValidPose(const Pose& p) {
+    return p.valid&&p.ns&&p.p.allFinite()&&p.q.coeffs().allFinite()&&
+        std::fabs(p.q.squaredNorm()-1.)<.01&&p.p.z()>.3&&p.p.z()<.8;
+}
+class History {
+public:
+    std::deque<Pose> poses;
+    unsigned generation=0;
+    void Clear(){poses.clear();++generation;}
+    bool Add(const Pose& p) {
+        if(!ValidPose(p)){Clear();return false;}
+        if(!poses.empty()) {
+            const auto& last=poses.back();
+            if(p.ns<=last.ns||p.ns-last.ns>100000000ULL||(p.p-last.p).norm()>.08||
+               last.q.angularDistance(p.q)>.12)Clear();
+        }
+        poses.push_back(p);
+        while(poses.size()>2&&p.ns-poses.front().ns>2000000000ULL)poses.pop_front();
+        return true;
+    }
+    bool At(std::uint64_t stamp,Pose& out)const {
+        if(poses.empty()||stamp<poses.front().ns||stamp>poses.back().ns)return false;
+        for(std::size_t i=1;i<poses.size();++i)if(poses[i].ns>=stamp) {
+            const auto& a=poses[i-1];const auto& b=poses[i];
+            if(b.ns-a.ns>80000000ULL)return false;
+            const double t=double(stamp-a.ns)/double(b.ns-a.ns);
+            out={stamp,(1.-t)*a.p+t*b.p,a.q.slerp(t,b.q).normalized(),true};return true;
+        }
+        return false;
+    }
+};
+inline bool Ray(double u,double v,V3& ray) {
+    if(!std::isfinite(u)||!std::isfinite(v)||u<0.||u>=1920.||v<594.||v>1058.4)return false;
+    const double x0=(u-934.705)/756.700,y0=(v-510.684)/752.123;
+    double x=x0,y=y0;
+    for(int n=0;n<8;++n) {
+        const double r=x*x+y*y,f=1.+.049696*r-.03070179*r*r-.04031327*r*r*r;
+        if(!std::isfinite(f)||f<.2)return false;
+        const double dx=2.*(-.00359919)*x*y+(-.00590063)*(r+2.*x*x);
+        const double dy=(-.00359919)*(r+2.*y*y)+2.*(-.00590063)*x*y;
+        x=(x0-dx)/f;y=(y0-dy)/f;
+    }
+    ray=V3(.00651959*x-.02434965*y+.99968224,
+           -.99983166*x-.01730499*y+.00609906,
+           .01715098*x-.99955372*y-.02445837);
+    return ray.allFinite();
+}
+inline bool Project(const Pose& capture,const std::array<double,2>& uv,V3& point) {
+    if(!ValidPose(capture))return false;
+    V3 ray;if(!Ray(uv[0],uv[1],ray))return false;
+    const V3 origin=capture.p+capture.q*V3(.44643878,-.00569431,-.00031663);
+    const V3 world_ray=capture.q*ray;
+    if(world_ray.z()>=-.08)return false;
+    const double scale=-origin.z()/world_ray.z();
+    if(!std::isfinite(scale)||scale<=0.||scale>5.)return false;
+    point=origin+scale*world_ray;
+    const V3 base=capture.q.conjugate()*(point-capture.p);
+    return point.allFinite()&&base.x()>=.45&&base.x()<=4.&&std::fabs(base.y())<1.5&&std::fabs(point.z())<1.e-6;
+}
+class Tracker {
+public:
+    struct Curve {std::uint64_t ns=0;std::vector<V3> points;V3 near=V3::Zero(),look=V3::Zero();Pose capture;double half_width=0.;};
+    struct ForwardReference {V3 point_body=V3::Zero();std::uint64_t capture_ns=0;bool historical=false;};
+    std::deque<Curve> curves;
+    Curve live;bool live_valid=false;
+    static constexpr std::uint64_t RetentionNs=90000000000ULL;
+    static constexpr std::size_t MaximumCurves=256;
+    V3 target=V3(-.775,0.,-.35);
+    double clearance=.16,blend_time=0.;
+    bool active=false,ever_tracked=false;
+    // Archive VA15 _set_pose_command_b() projects an unreachable reference
+    // into its TRAINED box instead of indefinitely holding a previous target.
+    // This is explicit actuator-reference allocation, NOT an observed crack
+    // point and NOT evidence of TCP arrival. Legacy tests default to strict.
+    bool training_workspace_recovery=false,workspace_limited=false;
+    V3 observed_goal=V3::Zero();
+    double allocation_error=0.;
+    unsigned generation=0;
+    std::uint64_t sequence=0;
+    unsigned rear_crossings=0,workspace_rejections=0;
+    double nearest_rear_gap=0.,cache_age=0.;
+    V3 desired=V3(-.775,0.,-.35);
+    const char* reason="waiting for observed rear path";
+    void Reset(){*this=Tracker();}
+    void ClearObservations(){curves.clear();live={};live_valid=false;sequence=0;active=false;}
+    void Begin(const Pose& p,const V3& seed=V3(-.775,0.,-.35)) {
+        target=desired=seed;clearance=(p.p+p.q*seed).z();
+        active=false;ever_tracked=false;blend_time=0.;reason="waiting for observed rear path";
+    }
+    bool Observe(const va15_visual::Packet& packet,const Pose& capture) {
+        if(packet.sequence==sequence)return true;
+        if(!packet.valid||packet.sequence<sequence||!ValidPose(capture)||capture.ns!=packet.capture_ns||
+           packet.path.size()<25||packet.path.size()>128)return false;
+        Curve curve;curve.ns=capture.ns;curve.capture=capture;
+        // Do not connect separate frames with invented line segments.
+        for(const auto& uv:packet.path) {
+            V3 p;if(!Project(capture,uv,p))break;
+            if(!curve.points.empty()&&(p-curve.points.back()).norm()>.20)break;
+            curve.points.push_back(p);
+        }
+        if(curve.points.size()<8)return false;
+        if(!Project(capture,{packet.u,packet.v},curve.near)||
+           !Project(capture,{packet.look_u,packet.look_v},curve.look))return false;
+        V3 edge_left,edge_right;
+        if(Project(capture,{packet.u-packet.width*.5,packet.v},edge_left)&&
+           Project(capture,{packet.u+packet.width*.5,packet.v},edge_right))
+            curve.half_width=.5*(edge_right-edge_left).head<2>().norm();
+        live=curve;live_valid=true;sequence=packet.sequence;
+        // A frame-count-only cache expired BEFORE the slow real robot could
+        // carry front-observed tape to its rear TCP. Retain measured curves
+        // by travelled distance/yaw, not camera FPS or gait pitch oscillation.
+        bool store=curves.empty();
+        if(!store) {
+            const auto& last=curves.back().capture;
+            const V3 delta=capture.p-last.p;
+            const V3 a=last.q*V3::UnitX(),b=capture.q*V3::UnitX();
+            const double heading=std::atan2(a.x()*b.y()-a.y()*b.x(),a.x()*b.x()+a.y()*b.y());
+            store=std::hypot(delta.x(),delta.y())>=.035||std::fabs(heading)>=.02||capture.ns-last.ns>=1000000000ULL;
+        }
+        if(store)curves.push_back(std::move(curve));
+        while(curves.size()>MaximumCurves||(!curves.empty()&&capture.ns>=curves.front().ns&&capture.ns-curves.front().ns>RetentionNs))curves.pop_front();
+        return true;
+    }
+    bool Guidance(const Pose& current,double& bearing,ForwardReference* reference=nullptr)const {
+        if(reference)*reference={};
+        if(!ValidPose(current)||!live_valid||current.ns<live.ns||
+           current.ns-live.ns>va15_visual::MaximumAgeNs)return false;
+        const auto& curve=live;
+        const V3 near=current.q.conjugate()*(curve.near-current.p);
+        const V3 look=current.q.conjugate()*(curve.look-current.p);
+        if(near.x()<.35||look.x()<.35)return false;
+        // The fixed far image rays can already lie beyond a bend's crest
+        // while the body is still entering it. Prefer an ACTUALLY OBSERVED
+        // forward segment in retained history, never its backward tangent.
+        // Fresh live vision remains required; history alone cannot drive.
+        constexpr double preview=.60;
+        bool found=false;
+        for(auto it=curves.rbegin();it!=curves.rend()&&!found;++it) {
+            if(current.ns<it->ns||current.ns-it->ns>RetentionNs)continue;
+            for(std::size_t i=1;i<it->points.size();++i) {
+                const V3 a=current.q.conjugate()*(it->points[i-1]-current.p);
+                const V3 b=current.q.conjugate()*(it->points[i]-current.p);
+                if(b.x()-a.x()<1.e-6)continue;
+                const double f=(preview-a.x())/(b.x()-a.x());
+                if(f<0.||f>1.)continue;
+                const V3 selected=(1.-f)*a+f*b;
+                bearing=std::atan2(selected.y(),selected.x());found=true;
+                if(reference)*reference={selected,it->ns,true};
+                break;
+            }
+        }
+        if(!found) {
+            V3 selected=near;
+            for(const auto& point:curve.points) {
+                const V3 candidate=current.q.conjugate()*(point-current.p);
+                if(candidate.x()>=.35&&candidate.x()<selected.x())selected=candidate;
+            }
+            bearing=std::atan2(selected.y(),selected.x());
+            if(reference)*reference={selected,curve.ns,false};
+        }
+        // Report a finite metric angle even if outside the SAME .45-rad
+        // envelope. Otherwise the caller would silently fall back to the
+        // distant image rays that may have a conflicting direction.
+        return std::isfinite(bearing);
+    }
+    bool BodyGuidance(const Pose& current,double& lateral,double& heading,bool& historical)const {
+        lateral=heading=0.;historical=false;
+        double unused;if(!Guidance(current,unused))return false;
+        // A tangent of a bend AHEAD is not the path beneath the body. Never
+        // extrapolate it backwards to x=0 to create steering authority. The
+        // caller follows the actually observed front reference until a real
+        // retained segment brackets the body station.
+        for(auto it=curves.rbegin();it!=curves.rend();++it) {
+            const auto& curve=*it;
+            if(current.ns<curve.ns||current.ns-curve.ns>RetentionNs)continue;
+            for(std::size_t i=1;i<curve.points.size();++i) {
+                const V3 a=current.q.conjugate()*(curve.points[i-1]-current.p);
+                const V3 b=current.q.conjugate()*(curve.points[i]-current.p);
+                if(b.x()-a.x()<1.e-6)continue;
+                const double f=-a.x()/(b.x()-a.x());
+                if(f<0.||f>1.)continue;
+                const double y=(1.-f)*a.y()+f*b.y();
+                // Prefer the most recent actual observation, NOT whichever
+                // old curve happens to put the robot closest to its centre.
+                const double tangent=std::atan2(b.y()-a.y(),b.x()-a.x());
+                if(std::isfinite(y)&&std::fabs(y)<=1.5&&std::isfinite(tangent)&&std::fabs(tangent)<=.65) {
+                    lateral=y;heading=tangent;historical=true;return true;
+                }
+            }
+        }
+        return historical;
+    }
+    // A point on an actually observed finite segment, independent of the
+    // actor's filtered/clamped workspace reference. Height is a process
+    // stand-off above the observed floor, NOT an observed crack elevation.
+    bool RearPoint(const Pose& current,double station,double height,V3& base)const {
+        if(!ValidPose(current)||!std::isfinite(station)||!std::isfinite(height)||
+           station< -1.||station>-.55||height<0.||height>.20)return false;
+        for(auto it=curves.rbegin();it!=curves.rend();++it) {
+            if(current.ns<it->ns||current.ns-it->ns>RetentionNs)continue;
+            for(std::size_t i=1;i<it->points.size();++i) {
+                const V3 a=current.q.conjugate()*(it->points[i-1]+V3(0,0,height)-current.p);
+                const V3 b=current.q.conjugate()*(it->points[i]+V3(0,0,height)-current.p);
+                if(b.x()-a.x()<1.e-6)continue;
+                const double f=(station-a.x())/(b.x()-a.x());
+                if(f<0.||f>1.)continue;
+                const V3 candidate=(1.-f)*a+f*b;
+                if(candidate.allFinite()){base=candidate;return true;}
+            }
+        }
+        return false;
+    }
+    bool Station(const Pose& current,double x,V3& base,double& heading)const {
+        if(!ValidPose(current)||!std::isfinite(x))return false;
+        for(auto it=curves.rbegin();it!=curves.rend();++it) {
+            if(current.ns<it->ns||current.ns-it->ns>RetentionNs)continue;
+            for(std::size_t i=1;i<it->points.size();++i) {
+                const V3 a=current.q.conjugate()*(it->points[i-1]-current.p);
+                const V3 b=current.q.conjugate()*(it->points[i]-current.p);
+                if(b.x()-a.x()<1.e-6)continue;
+                const double f=(x-a.x())/(b.x()-a.x());if(f<0.||f>1.)continue;
+                base=(1.-f)*a+f*b;heading=std::atan2(b.y()-a.y(),b.x()-a.x());return true;
+            }
+        }
+        return false;
+    }
+    // Shortest XY distance to one observed polyline. Select the newest curve
+    // whose longitudinal extent covers the query; do not cherry-pick old
+    // frames by lowest error or score distance to an unrelated front endpoint.
+    bool Projection(const Pose& current,const V3& query_base,double& error,V3& closest_world)const {
+        if(!ValidPose(current)||!query_base.allFinite())return false;
+        const V3 query=current.p+current.q*query_base;
+        for(auto it=curves.rbegin();it!=curves.rend();++it) {
+            if(current.ns<it->ns||current.ns-it->ns>RetentionNs)continue;
+            double min_x=INFINITY,max_x=-INFINITY;
+            for(const auto& p:it->points) {
+                const double x=(current.q.conjugate()*(p-current.p)).x();min_x=std::min(min_x,x);max_x=std::max(max_x,x);
+            }
+            if(query_base.x()<min_x||query_base.x()>max_x)continue;
+            double best=INFINITY;V3 chosen;
+            for(std::size_t i=1;i<it->points.size();++i) {
+                const Eigen::Vector2d delta=(it->points[i]-it->points[i-1]).head<2>();
+                if(delta.squaredNorm()<1.e-10)continue;
+                const double f=std::clamp((query-it->points[i-1]).head<2>().dot(delta)/delta.squaredNorm(),0.,1.);
+                const V3 point=(1.-f)*it->points[i-1]+f*it->points[i];
+                const double distance=(query-point).head<2>().norm();
+                if(distance<best){best=distance;chosen=point;}
+            }
+            if(std::isfinite(best)){error=best;closest_world=chosen;return true;}
+        }
+        return false;
+    }
+    bool Step(const Pose& current,double dt,bool moving) {
+        active=false;workspace_limited=false;allocation_error=0.;rear_crossings=workspace_rejections=0;nearest_rear_gap=100.;cache_age=0.;
+        if(!ValidPose(current)||!std::isfinite(dt)||dt<=0.||dt>.02) {reason="invalid local pose/time; target frozen";return false;}
+        while(!curves.empty()&&(current.ns<curves.front().ns||current.ns-curves.front().ns>RetentionNs))curves.pop_front();
+        if(!curves.empty())cache_age=double(current.ns-curves.front().ns)*1.e-9;
+        if(!moving){reason="stopped: holding last TCP command";return true;}
+        bool found=false;double score=std::numeric_limits<double>::infinity();
+        for(const auto& curve:curves)for(std::size_t i=1;i<curve.points.size();++i) {
+            const V3 a=current.q.conjugate()*(curve.points[i-1]-current.p);
+            const V3 b=current.q.conjugate()*(curve.points[i]-current.p);
+            nearest_rear_gap=std::min(nearest_rear_gap,std::min(std::fabs(a.x()+.775),std::fabs(b.x()+.775)));
+            if(std::fabs(b.x()-a.x())<1.e-6)continue;
+            // The training contract permits x in [-1,-.55], not only one
+            // rigid rear station. Allocate the observed segment within that
+            // SAME workspace rather than inventing/clamping an unseen path.
+            // Intersect the segment parameter with all original XYZ bounds.
+            double lo=0.,hi=1.;
+            const V3 delta=b-a;
+            const V3 lift=current.q.conjugate()*V3(0.,0.,clearance);
+            const V3 lower(-1.,-.15,-.55),upper(-.55,.15,-.30);
+            for(int j=0;j<3;++j) {
+                if(std::fabs(delta[j])<1.e-9) {
+                    if(a[j]+lift[j]<lower[j]||a[j]+lift[j]>upper[j])lo=2.;
+                } else {
+                    const double f0=(lower[j]-a[j]-lift[j])/delta[j];
+                    const double f1=(upper[j]-a[j]-lift[j])/delta[j];
+                    lo=std::max(lo,std::min(f0,f1));hi=std::min(hi,std::max(f0,f1));
+                }
+            }
+            const double nominal=(-.775-a.x())/delta.x();
+            if(nominal>=0.&&nominal<=1.)++rear_crossings;
+            if(lo>hi) {if(nominal>=0.&&nominal<=1.)++workspace_rejections;continue;}
+            const double fraction=std::clamp(nominal,lo,hi);
+            V3 world=(1.-fraction)*curve.points[i-1]+fraction*curve.points[i];world.z()+=clearance;
+            const V3 candidate=current.q.conjugate()*(world-current.p);
+            // Reject rather than silently clamp an unreachable crack target.
+            if(candidate.x()< -1.||candidate.x()>-.55||std::fabs(candidate.y())>.15||
+               candidate.z()<-.55||candidate.z()>-.30){++workspace_rejections;continue;}
+            const double cost=2.*std::fabs(candidate.x()+.775)+std::fabs(candidate.y())+.0001*double(current.ns-curve.ns)*1.e-9;
+            if(cost<score){score=cost;desired=candidate;found=true;}
+        }
+        if(!found&&training_workspace_recovery)found=AllocateObservedRecovery(current);
+        if(!found){reason=rear_crossings?"observed rear path exists but outside trained workspace; target held":"waiting for actual observed history to reach rear TCP; target held";return true;}
+        if(!workspace_limited)observed_goal=desired;
+        AdvanceReference(dt);
+        reason=workspace_limited?"TRAINING workspace-limited recovery reference; NOT an on-crack target or completion":
+            "tracking observed cached flat-floor path; NOT depth";return true;
+    }
+    void AdvanceReference(double dt) {
+        active=ever_tracked=true;blend_time+=dt;
+        // Checkpoint env.yaml: tool_height_m=.09; limit_ranges.pos_z=[-.55,-.30].
+        // The archived deployment's -.38 cutoff excluded the actual training
+        // trajectory at a ~.52 m base height. Restore the TRAINING contract,
+        // not an arbitrary larger workspace. Lower the target plane only
+        // after real rear history exists, at <=1 cm/s; never jump at R1+Y.
+        clearance+=std::clamp(.09-clearance,-.01*dt,.01*dt);
+        const double gain=std::min(1.,blend_time/4.);
+        const V3 rate(.04,.04,.02);
+        for(int j=0;j<3;++j) {
+            const double step=dt/(.6+dt)*(desired[j]-target[j])*gain;
+            target[j]+=std::clamp(step,-rate[j]*dt,rate[j]*dt);
+        }
+    }
+    // A confirmed finite cap may become the final target only as it enters
+    // the original rear workspace. Recovery mode explicitly allocates the
+    // archived training reference; the observed endpoint itself is unchanged.
+    bool StepEndpoint(const Pose& current,double dt,const V3& endpoint) {
+        if(!ValidPose(current)||!endpoint.allFinite()||std::fabs(endpoint.z())>1.e-6||
+           !std::isfinite(dt)||dt<=0.||dt>.02)return false;
+        V3 world=endpoint;world.z()+=clearance;
+        const V3 candidate=current.q.conjugate()*(world-current.p);
+        if(training_workspace_recovery&&std::fabs(candidate.x()+.775)<=.12&&
+           std::fabs(candidate.y())<=.35&&candidate.z()>=-.65&&candidate.z()<=-.25) {
+            observed_goal=candidate;
+            desired=candidate.cwiseMax(V3(-1.,-.15,-.55)).cwiseMin(V3(-.55,.15,-.30));
+            allocation_error=(desired-candidate).norm();workspace_limited=allocation_error>1.e-9;
+            AdvanceReference(dt);
+            reason=workspace_limited?"finite endpoint TRAINING recovery reference; arrival still uses actual endpoint FK":
+                "finite observed endpoint target; arrival checked from measured arm FK";
+            return true;
+        }
+        if(std::fabs(candidate.x()+.775)>.12||candidate.x()< -1.||candidate.x()>-.55||
+           std::fabs(candidate.y())>.15||candidate.z()<-.55||candidate.z()>-.30)return false;
+        desired=candidate;active=ever_tracked=true;blend_time+=dt;
+        clearance+=std::clamp(.09-clearance,-.01*dt,.01*dt);
+        const double gain=std::min(1.,blend_time/4.);const V3 rate(.04,.04,.02);
+        for(int j=0;j<3;++j) {
+            const double step=dt/(.6+dt)*(desired[j]-target[j])*gain;
+            target[j]+=std::clamp(step,-rate[j]*dt,rate[j]*dt);
+        }
+        reason="finite observed endpoint target; arrival checked from measured arm FK";return true;
+    }
+private:
+    bool AllocateObservedRecovery(const Pose& current) {
+        bool found=false;double score=std::numeric_limits<double>::infinity();
+        for(const auto& curve:curves)for(std::size_t i=1;i<curve.points.size();++i) {
+            const V3 a=current.q.conjugate()*(curve.points[i-1]-current.p);
+            const V3 b=current.q.conjugate()*(curve.points[i]-current.p);
+            const V3 delta=b-a;if(std::fabs(delta.x())<1.e-6)continue;
+            // Keep the reference on a real finite segment at a rear station.
+            // Do not clamp a still-front point backwards into an unseen path.
+            double lo=std::max(0.,std::min((-1.-a.x())/delta.x(),(-.55-a.x())/delta.x()));
+            double hi=std::min(1.,std::max((-1.-a.x())/delta.x(),(-.55-a.x())/delta.x()));
+            if(lo>hi)continue;
+            const double f=std::clamp((-.775-a.x())/delta.x(),lo,hi);
+            V3 world=(1.-f)*curve.points[i-1]+f*curve.points[i];world.z()+=clearance;
+            const V3 raw=current.q.conjugate()*(world-current.p);
+            if(!raw.allFinite()||std::fabs(raw.y())>.35||raw.z()<-.65||raw.z()>-.25)continue;
+            const V3 bounded=raw.cwiseMax(V3(-1.,-.15,-.55)).cwiseMin(V3(-.55,.15,-.30));
+            const double cost=2.*std::fabs(raw.x()+.775)+std::fabs(raw.y())+.0001*double(current.ns-curve.ns)*1.e-9;
+            if(cost<score) {
+                score=cost;observed_goal=raw;desired=bounded;allocation_error=(raw-bounded).norm();
+                workspace_limited=allocation_error>1.e-9;found=true;
+            }
+        }
+        return found;
+    }
+};
+}

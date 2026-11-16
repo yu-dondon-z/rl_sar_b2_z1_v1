@@ -1,0 +1,11 @@
+{
+  "snapshot_date": "2026-11-16",
+  "model": "RHANet_dep",
+  "source": "/home/dong/RHACrackNet/code/exps/rhanet_dep_CamCrack789_b2_stage1/ckpt/best_ckpt.pth",
+  "source_repository": "https://github.com/yu-dondon-z/RHACrackNet",
+  "source_commit": "991efad9b7f8f9d53c28dee6a65aaf7d3242bb16",
+  "checkpoint": "best_ckpt.pth",
+  "size_bytes": 7068006,
+  "sha256": "f1eea726c85773c3ddb71649bdae097eff6ca7693c7f36ad488fa9f4643bdb80",
+  "note": "Existing inference weights, copied without conversion or retraining. Required network code and its license are bundled at scripts/vision/rhacracknet/. This is not a robot actor or a hardware release."
+}

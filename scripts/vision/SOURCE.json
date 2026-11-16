@@ -1,0 +1,24 @@
+{
+  "snapshot_date": "2026-11-16",
+  "source_directory": "/home/dong/b2_z1/scripts/vision",
+  "source_repository_head": "b73d42a810dffd6003fa1654f17fb2fae70dbd10",
+  "note": "Byte-identical copies of the working-tree modules actually used by the current simulation. The source HEAD alone does not describe uncommitted working-tree changes.",
+  "bundled_dependency": {
+    "repository": "https://github.com/yu-dondon-z/RHACrackNet",
+    "commit": "991efad9b7f8f9d53c28dee6a65aaf7d3242bb16",
+    "source_python_root": "/home/dong/RHACrackNet/code",
+    "packaged_path": "rhacracknet/",
+    "note": "The source commit may not be published; the exact required source is bundled with its own hash manifest and MIT license."
+  },
+  "sha256": {
+    "dual_camera_perception.py": "f3e91567424c5eafe2f5d0de26fbaac2e3ce42bb45992ba823c00ab736f1b63a",
+    "run_dual_camera_bridge.py": "f87f37c550b4d454dda85bc54e8a44591c799e78d5b06b803891d756d372d888",
+    "vd1_control.py": "167b7e793971052e45aae5d7daee9fb1e29462671ce228929a781088c751b01f",
+    "vd1_frames.py": "30a08e504862d7ef5014e35fbf524fe98a0ff537dd5f6508f22639f3a514cbf9",
+    "vd1_scene.py": "72765a2d461be7a543c6c2645e420c57f5f5135eb18942158535d97655b1d88d",
+    "test_dual_camera_bridge.py": "33838887a0030fc67b2d48505d90c037e49372e4a3aafae38fc5485388d610ff",
+    "test_dual_camera_perception.py": "091c7e43acd08c2280159c0d2d028938622e418501419eb1d392345cbb4564a8",
+    "test_vd1_control.py": "3997e1005e6bd7036cb828da6176d69ddde25dcc24a3da1821cd3ae5a2b5f95f",
+    "test_vd1_frames.py": "d78f0f54c7aa94f69e6c3f7a409de6bcedb53f63c0444fd484353138d406babf"
+  }
+}

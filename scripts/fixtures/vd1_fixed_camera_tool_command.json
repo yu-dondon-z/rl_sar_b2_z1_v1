@@ -1,0 +1,18 @@
+{
+  "schema": "vd1_fixed_camera_tool_command_v1",
+  "description": "Recorded camera-derived target, frozen in base coordinates for a no-vision diagnostic. Not a world anchor or live perception.",
+  "source_trace": "/dev/shm/vd1_mujoco_runs/session_20261103_125936_czdp9sxi/actor_trace.jsonl.gz",
+  "source_trace_sha256": "b03f58fcc0418f4b73126081c88edc8c4fdf67b6af2b7ee40efe301ffb13f8d3",
+  "line": 201,
+  "step": 200,
+  "sim_time_s": 3.999999999999937,
+  "tool_pose_b": [
+    -1.0200000083422316,
+    -0.04950019815216234,
+    -0.3030399561570878,
+    5.186645830358377e-17,
+    -0.5315235017799165,
+    3.254642775631836e-17,
+    0.847043544958354
+  ]
+}

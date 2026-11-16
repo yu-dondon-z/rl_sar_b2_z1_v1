@@ -1,0 +1,29 @@
+# Rectified optical images: x right, y down, z forward. Base: x forward, y left, z up.
+# Snapshot of the calibration used on the board; no ideal VD3 camera parameters.
+front_rgb:
+  source: "board front_rgb.yaml; existing robot calibration 2026-09-15"
+  native_size: [1920, 1080]
+  render_size: [640, 480]
+  intrinsic_matrix:
+    - [756.7, 0.0, 934.705]
+    - [0.0, 752.123, 510.684]
+    - [0.0, 0.0, 1.0]
+  T_base_camera:
+    - [0.00651959, -0.02434965, 0.99968224, 0.44643878]
+    - [-0.99983166, -0.01730499, 0.00609906, -0.00569431]
+    - [0.01715098, -0.99955372, -0.02445837, -0.00031663]
+    - [0.0, 0.0, 0.0, 1.0]
+rear_d435i:
+  source: "measured rear_camera.json transform; D435i 242322073586 recorded color intrinsics 2026-11-07"
+  calibration_quality: measured_installation_transform
+  T_base_camera:
+    - [0.0, 0.770435, -0.637519, -0.434510]
+    - [1.0, 0.0, 0.0, 0.0]
+    - [0.0, -0.637519, -0.770435, 0.026751]
+    - [0.0, 0.0, 0.0, 1.0]
+  native_size: [640, 480]
+  render_size: [640, 480]
+  intrinsic_matrix:
+    - [607.6587524414062, 0.0, 323.6682434082031]
+    - [0.0, 607.8262329101562, 246.74317932128906]
+    - [0.0, 0.0, 1.0]

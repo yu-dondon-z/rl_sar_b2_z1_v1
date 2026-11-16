@@ -1,5 +1,20 @@
 # rl_sar
 
+Local B2+Z1 workspace: [documentation index](docs/README.md),
+[script index](scripts/README.md), and [board deployment instructions](deployment/vd2_real/README_板载编译与运行.md).
+
+Local status (2026-11-16): VD14 checkpoint 5999 completed 30-second Isaac and
+MuJoCo truth-command samples with improved posture. Sensor-based camera motion
+compensation, rear RGB evidence and signed-quaternion continuity fixes now
+complete 30-second curved and straight visual samples with much less rod swinging.
+Targets still rely mainly on bounded estimates; visual deployment is not accepted.
+Rear target support shortfalls now enter zero-travel wait/recovery; a 60-second
+sample completed with 8 waits and recoveries, not a continuous-validity pass.
+Earlier contact/keep-out failure logs are retained.
+The paired source/model snapshot is documented in [VD14 GitHub snapshot](docs/VD14_GITHUB_SYNC_20261116.md).
+See [current commands and evidence](docs/reports/vd14/VD14_PLAY_MUJOCO_20261116.md).
+Historical instructions are [archived](docs/archive/README.md); no default actor or hardware has been changed.
+
 [![Ubuntu 20.04/22.04](https://img.shields.io/badge/Ubuntu-20.04/22.04-blue.svg?logo=ubuntu)](https://ubuntu.com/)
 [![macOS](https://img.shields.io/badge/macOS-Experimental-orange.svg?logo=apple)](https://www.apple.com/macos/)
 [![ROS Noetic](https://img.shields.io/badge/ros-noetic-brightgreen.svg?logo=ros)](https://wiki.ros.org/noetic)
